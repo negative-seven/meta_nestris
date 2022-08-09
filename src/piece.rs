@@ -1,5 +1,5 @@
 use enum_primitive_derive::Primitive;
-use num_traits::{FromPrimitive, ToPrimitive};
+use num_traits::ToPrimitive;
 
 #[derive(Clone, Copy, Eq, PartialEq, Primitive)]
 pub enum Piece {

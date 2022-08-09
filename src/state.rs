@@ -1,7 +1,4 @@
-use crate::{
-    input::{Button, Input},
-    random::Random,
-};
+use crate::{input::Input, random::Random};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct State {
@@ -149,7 +146,7 @@ impl State {
         }
     }
 
-    pub fn step(&mut self, input: &Input) {
+    pub fn step(&mut self, input: Input) {
         if self.dead {
             return;
         }
@@ -180,7 +177,7 @@ impl State {
                 if self.dead {
                     return;
                 }
-                if self.nmi_wait_point == 0 && a == self.game_mode_state {
+                if self.nmi_wait_point == 0 && a {
                     break;
                 }
                 if self.nmi_wait_point != 0 {
@@ -235,7 +232,7 @@ impl State {
         self.random.step();
     }
 
-    fn branch_on_game_mode(&mut self, input: &Input) -> u8 {
+    fn branch_on_game_mode(&mut self, input: Input) -> bool {
         match self.game_mode {
             0 => self.legal_screen(input),
             1 => self.title_screen(input),
@@ -246,76 +243,76 @@ impl State {
         }
     }
 
-    fn legal_screen(&mut self, input: &Input) -> u8 {
+    fn legal_screen(&mut self, input: Input) -> bool {
         self.render_mode = 0;
         if self.legal_screen_nmi_timer < 264 {
             self.legal_screen_nmi_timer += 1;
             self.general_counter = 0xff;
             self.do_nmi = self.legal_screen_nmi_timer != 2;
-            return 0;
+            return 0 == self.game_mode_state;
         }
 
-        let pressed_input = input.difference(&self.previous_input);
-        if pressed_input.states.data[0] != 0x10 && self.general_counter != 0 {
+        let pressed_input = input.difference(self.previous_input);
+        if pressed_input != 0x10 && self.general_counter != 0 {
             self.general_counter -= 1;
-            return 0;
+            return 0 == self.game_mode_state;
         }
 
         self.game_mode += 1;
         self.title_screen_nmi_timer = 0;
-        return 0x10;
+        return 0x10 == self.game_mode_state;
     }
 
-    fn title_screen(&mut self, input: &Input) -> u8 {
+    fn title_screen(&mut self, input: Input) -> bool {
         self.render_mode = 0;
         if self.title_screen_nmi_timer < 5 {
             self.title_screen_nmi_timer += 1;
-            return 0;
+            return 0 == self.game_mode_state;
         }
 
         loop {
-            let pressed_input = input.difference(&self.previous_input);
-            if pressed_input.states.data[0] == 0x10 {
+            let pressed_input = input.difference(self.previous_input);
+            if pressed_input == Input::Start {
                 break;
             }
 
-            return 0;
+            return 0 == self.game_mode_state;
         }
 
         self.game_mode += 1;
         self.game_type_menu_nmi_timer = 0;
-        return 0;
+        return 0 == self.game_mode_state;
     }
 
-    fn game_type_menu(&mut self, input: &Input) -> u8 {
+    fn game_type_menu(&mut self, input: Input) -> bool {
         self.render_mode = 1;
 
         if self.game_type_menu_nmi_timer < 3 {
             self.game_type_menu_nmi_timer += 1;
-            return 0;
+            return 0 == self.game_mode_state;
         }
 
         loop {
-            let pressed_input = input.difference(&self.previous_input);
-            if pressed_input.states.data[0] == 1 {
+            let pressed_input = input.difference(self.previous_input);
+            if pressed_input == Input::Right {
                 self.game_type = 1;
-            } else if pressed_input.states.data[0] == 2 {
+            } else if pressed_input == Input::Left {
                 self.game_type = 0;
-            } else if pressed_input.states.data[0] == 0x10 {
+            } else if pressed_input == Input::Start {
                 self.game_mode += 1;
                 self.level_menu_nmi_timer = 0;
-                return 0;
-            } else if pressed_input.states.data[0] == 0x40 {
+                return 0 == self.game_mode_state;
+            } else if pressed_input == Input::B {
                 self.game_mode -= 1;
                 self.title_screen_nmi_timer = 0;
-                return 0;
+                return 0 == self.game_mode_state;
             }
 
-            return 0;
+            return 0 == self.game_mode_state;
         }
     }
 
-    fn level_menu(&mut self, input: &Input) -> u8 {
+    fn level_menu(&mut self, input: Input) -> bool {
         self.render_mode = 1;
 
         if self.level_menu_nmi_timer < 4 {
@@ -324,7 +321,7 @@ impl State {
             self.original_y = 0;
             self.drop_speed = 0;
             self.start_level %= 10;
-            return 0;
+            return 0 == self.game_mode_state;
         }
 
         loop {
@@ -332,31 +329,31 @@ impl State {
             self.level_menu_handle_level_height_navigation(input);
             self.original_y = self.selecting_level_or_height;
 
-            let pressed_input = input.difference(&self.previous_input);
-            if pressed_input.states.data[0] == 0x10 {
-                if input.states.data[0] == 0x90 {
+            let pressed_input = input.difference(self.previous_input);
+            if pressed_input == Input::Start {
+                if input == Input::Start | Input::A {
                     self.start_level += 10;
                 }
                 self.game_mode_state = 0;
                 self.game_mode += 1;
-                return 0;
+                return 0 == self.game_mode_state;
             }
 
-            if pressed_input.states.data[0] == 0x40 {
+            if pressed_input == Input::B {
                 self.game_type_menu_nmi_timer = 0;
                 self.game_mode -= 1;
-                return 0;
+                return 0 == self.game_mode_state;
             }
 
             self.random.choose_random_holes();
-            return 0;
+            return 0 == self.game_mode_state;
         }
     }
 
-    fn level_menu_handle_level_height_navigation(&mut self, input: &Input) {
-        let pressed_input = input.difference(&self.previous_input);
+    fn level_menu_handle_level_height_navigation(&mut self, input: Input) {
+        let pressed_input = input.difference(self.previous_input);
 
-        if pressed_input.states.data[0] == 1 {
+        if pressed_input == Input::Right {
             if self.selecting_level_or_height == 0 {
                 if self.start_level != 9 {
                     self.start_level += 1;
@@ -368,7 +365,7 @@ impl State {
             }
         }
 
-        if pressed_input.states.data[0] == 2 {
+        if pressed_input == Input::Left {
             if self.selecting_level_or_height == 0 {
                 if self.start_level != 0 {
                     self.start_level -= 1;
@@ -380,7 +377,7 @@ impl State {
             }
         }
 
-        if pressed_input.states.data[0] == 4 {
+        if pressed_input == Input::Down {
             if self.selecting_level_or_height == 0 {
                 if self.start_level < 5 {
                     self.start_level += 5;
@@ -392,7 +389,7 @@ impl State {
             }
         }
 
-        if pressed_input.states.data[0] == 8 {
+        if pressed_input == Input::Up {
             if self.selecting_level_or_height == 0 {
                 if self.start_level >= 5 {
                     self.start_level -= 5;
@@ -405,52 +402,52 @@ impl State {
         }
 
         if self.game_type != 0 {
-            if pressed_input.states.data[0] == 0x80 {
+            if pressed_input == Input::A {
                 self.selecting_level_or_height ^= 1;
             }
         }
     }
 
-    fn play_and_ending_high_score(&mut self, input: &Input) -> u8 {
+    fn play_and_ending_high_score(&mut self, input: Input) -> bool {
         match self.game_mode_state {
             0 => self.init_game_background(),
             1 => self.init_game_state(),
             2 => self.update_counters_and_non_player_state(),
             3 => {
                 self.game_mode_state += 1;
-                1
+                false
             }
             4 => self.update_player1(input),
             5 => {
                 self.game_mode_state += 1;
-                0
+                false
             }
             6 => {
                 self.game_mode_state += 1;
-                input.states.data[0]
+                input == self.game_mode_state
             }
             7 => self.start_button_handling(input),
             8 => {
                 self.game_mode_state = 2;
-                2
+                true
             }
             _ => panic!("invalid game mode state"),
         }
     }
 
-    fn init_game_background(&mut self) -> u8 {
+    fn init_game_background(&mut self) -> bool {
         if self.init_game_background_nmi_timer < 3 {
             self.init_game_background_nmi_timer += 1;
-            return 0;
+            return true;
         }
 
         self.play_state = 1;
         self.level_number = self.start_level;
         self.game_mode_state += 1;
-        0
+        false
     }
 
-    fn init_game_state(&mut self) -> u8 {
+    fn init_game_state(&mut self) -> bool {
         self.tetrimino_x = 5;
         self.tetrimino_y = 0;
         self.vram_row = 0;
@@ -471,7 +468,7 @@ impl State {
             self.lines = 0x25;
         }
         self.nmi_wait_point = 2;
-        0xff
+        false
     }
 
     fn choose_next_tetrimino(&mut self) -> u8 {
@@ -479,40 +476,40 @@ impl State {
         return piece as u8;
     }
 
-    fn update_counters_and_non_player_state(&mut self) -> u8 {
+    fn update_counters_and_non_player_state(&mut self) -> bool {
         self.fall_timer += 1;
         self.game_mode_state += 1;
-        0
+        false
     }
 
-    fn update_player1(&mut self, input: &Input) -> u8 {
+    fn update_player1(&mut self, input: Input) -> bool {
         self.branch_on_play_state_player1(input);
         self.game_mode_state += 1;
-        0
+        false
     }
 
-    fn start_button_handling(&mut self, input: &Input) -> u8 {
-        let pressed_input = input.difference(&self.previous_input);
+    fn start_button_handling(&mut self, input: Input) -> bool {
+        let pressed_input = input.difference(self.previous_input);
 
-        if self.game_mode == 5 && pressed_input.states.data[0] == 0x10 {
+        if self.game_mode == 5 && pressed_input == Input::Start {
             self.game_mode = 1;
             self.game_mode_state += 1;
-            return 1;
+            return false;
         }
 
-        if self.render_mode == 3 && pressed_input.get(Button::Start) && self.play_state != 10 {
+        if self.render_mode == 3 && pressed_input.get(Input::Start) && self.play_state != 10 {
             self.render_mode = 0;
             self.nmi_wait_point = 1;
-            return 0;
+            return false;
         }
 
         self.game_mode_state += 1;
-        0
+        false
     }
 
-    fn pause_loop(&mut self, input: &Input) {
-        let pressed_input = input.difference(&self.previous_input);
-        if !(pressed_input.states.data[0] == 0x10) {
+    fn pause_loop(&mut self, input: Input) {
+        let pressed_input = input.difference(self.previous_input);
+        if pressed_input != Input::Start {
             return;
         }
 
@@ -522,7 +519,7 @@ impl State {
         self.nmi_wait_point = 0;
     }
 
-    fn branch_on_play_state_player1(&mut self, input: &Input) {
+    fn branch_on_play_state_player1(&mut self, input: Input) {
         match self.play_state {
             0 => {
                 self.current_piece = 0x13;
@@ -546,7 +543,7 @@ impl State {
         }
     }
 
-    fn player_controls_active_tetrimino(&mut self, input: &Input) {
+    fn player_controls_active_tetrimino(&mut self, input: Input) {
         self.shift_tetrimino(input);
         self.rotate_tetrimino(input);
         self.drop_tetrimino(input);
@@ -769,15 +766,15 @@ impl State {
         self.autorepeat_y = 0;
     }
 
-    fn shift_tetrimino(&mut self, input: &Input) {
+    fn shift_tetrimino(&mut self, input: Input) {
         let original_y = self.tetrimino_x;
-        if input.get(Button::Down) {
+        if input.get(Input::Down) {
             return;
         }
 
-        let pressed_input = input.difference(&self.previous_input);
-        if pressed_input.states.data[0] & 0x3 == 0 {
-            if input.states.data[0] & 3 == 0 {
+        let pressed_input = input.difference(self.previous_input);
+        if pressed_input & (Input::Left | Input::Right) == 0 {
+            if input & (Input::Left | Input::Right) == 0 {
                 return;
             }
 
@@ -790,14 +787,14 @@ impl State {
             self.autorepeat_x = 0;
         }
 
-        if input.get(Button::Right) {
+        if input.get(Input::Right) {
             self.tetrimino_x += 1;
             if !self.is_position_valid() {
                 self.tetrimino_x = original_y;
                 self.autorepeat_x = 16;
             }
             return;
-        } else if input.get(Button::Left) {
+        } else if input.get(Input::Left) {
             self.tetrimino_x = u8::wrapping_sub(self.tetrimino_x, 1);
             if !self.is_position_valid() {
                 self.tetrimino_x = original_y;
@@ -852,11 +849,11 @@ impl State {
         true
     }
 
-    fn rotate_tetrimino(&mut self, input: &Input) {
+    fn rotate_tetrimino(&mut self, input: Input) {
         let original_y = self.current_piece;
         let mut x = self.current_piece << 1;
-        let pressed_input = input.difference(&self.previous_input);
-        if pressed_input.get(Button::A) {
+        let pressed_input = input.difference(self.previous_input);
+        if pressed_input.get(Input::A) {
             x += 1;
             self.current_piece = Self::ROTATION_TABLE[x as usize];
             if !self.is_position_valid() {
@@ -864,7 +861,7 @@ impl State {
             }
             return;
         }
-        if pressed_input.get(Button::B) {
+        if pressed_input.get(Input::B) {
             self.current_piece = Self::ROTATION_TABLE[x as usize];
             if !self.is_position_valid() {
                 self.current_piece = original_y;
@@ -873,31 +870,35 @@ impl State {
         }
     }
 
-    fn drop_tetrimino(&mut self, input: &Input) {
-        let new_input = input.difference(&self.previous_input);
+    fn drop_tetrimino(&mut self, input: Input) {
+        let new_input = input.difference(self.previous_input);
         if self.autorepeat_y >= 0x80 {
-            if !new_input.get(Button::Down) {
+            if !new_input.get(Input::Down) {
                 self.autorepeat_y = u8::wrapping_add(self.autorepeat_y, 1);
                 return;
             }
             self.autorepeat_y = 0;
         }
         if self.autorepeat_y == 0 {
-            if input.get(Button::Left) || input.get(Button::Right) {
+            if input.get(Input::Left) || input.get(Input::Right) {
                 self.lookup_drop_speed();
                 return;
             }
-            if new_input.states.data[0] & 0xf == 4 {
+            if new_input.get(Input::Down)
+                && !new_input.get(Input::Left)
+                && !new_input.get(Input::Right)
+                && !new_input.get(Input::Up)
+            {
                 self.autorepeat_y = 1;
             }
             self.lookup_drop_speed();
             return;
         }
 
-        if !(input.get(Button::Down)
-            && !input.get(Button::Left)
-            && !input.get(Button::Right)
-            && !input.get(Button::Up))
+        if !(input.get(Input::Down)
+            && !input.get(Input::Left)
+            && !input.get(Input::Right)
+            && !input.get(Input::Up))
         {
             self.autorepeat_y = 0;
             self.hold_down_points = 0;

@@ -1,25 +1,22 @@
-use bitvec::prelude::*;
+use bitmask_enum::bitmask;
 
-#[derive(Clone, Eq, PartialEq)]
-pub struct Input {
-    pub states: BitArr!(for 8, in u8),
-}
-pub enum Button {
-    Right = 0,
-    Left = 1,
-    Down = 2,
-    Up = 3,
-    Start = 4,
-    Select = 5,
-    B = 6,
-    A = 7,
+#[bitmask(u8)]
+#[derive(Eq, PartialEq)]
+pub enum Input {
+    None = 0,
+    Right = 0x01,
+    Left = 0x02,
+    Down = 0x04,
+    Up = 0x08,
+    Start = 0x10,
+    Select = 0x20,
+    B = 0x40,
+    A = 0x80,
 }
 
 impl Input {
     pub fn new() -> Self {
-        Self {
-            states: BitArray::new([0]),
-        }
+        Self::None
     }
 
     pub fn from_fm2_string(string: String) -> Result<Input, String> {
@@ -34,22 +31,26 @@ impl Input {
             input_byte |= if state { 0x80 } else { 0 };
         }
 
-        Ok(Input {
-            states: BitArray::new([input_byte]),
-        })
+        Ok(Input::from(input_byte))
     }
 
-    pub fn get(&self, button: Button) -> bool {
-        self.states[button as usize]
+    pub fn get(self, button: Input) -> bool {
+        self & button != 0
     }
 
-    pub fn set(&mut self, button: Button, state: bool) {
-        self.states.set(button as usize, state);
+    pub fn get_only_input(self, button: Input) -> bool {
+        self == button
     }
 
-    pub fn difference(&self, other: &Input) -> Input {
-        Input {
-            states: self.states & !other.states,
+    pub fn set(mut self, button: Input, state: bool) {
+        if state {
+            self |= button;
+        } else {
+            self &= !button;
         }
+    }
+
+    pub fn difference(self, other: Input) -> Input {
+        self & !other
     }
 }

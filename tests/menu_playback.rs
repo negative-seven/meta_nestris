@@ -6,7 +6,7 @@ fn get_last_state(movie_filepath: &PathBuf) -> State {
 
     let mut state = State::new();
     for input in movie.inputs {
-        state.step(&input);
+        state.step(input);
     }
     return state;
 }

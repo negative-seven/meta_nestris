@@ -6,11 +6,11 @@ fn get_last_two_states(movie_filepath: &PathBuf) -> (State, State) {
 
     let mut state = State::new();
     for input in movie.inputs.iter().take(movie.inputs.len() - 1) {
-        state.step(input);
+        state.step(*input);
     }
 
     let next_to_last_state = state.clone();
-    state.step(movie.inputs.last().unwrap());
+    state.step(*movie.inputs.last().unwrap());
 
     (next_to_last_state, state)
 }
