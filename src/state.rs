@@ -15,7 +15,7 @@ pub struct State {
     pub tetrimino_y: u8,
     pub fall_timer: u8,
     pub game_mode_state: u8,
-    pub render_mode: u8,
+    pub render_playfield: bool,
     pub autorepeat_y: u8,
     pub current_piece: u8,
     pub next_piece: u8,
@@ -102,7 +102,7 @@ impl State {
             tetrimino_y: 0,
             game_mode_state: 0,
             fall_timer: 0,
-            render_mode: 3,
+            render_playfield: false,
             autorepeat_y: 0,
             current_piece: 0,
             next_piece: 0,
@@ -231,7 +231,7 @@ impl State {
     }
 
     fn legal_screen(&mut self, input: Input) -> bool {
-        self.render_mode = 0;
+        self.render_playfield = false;
         if self.legal_screen_nmi_timer < 264 {
             self.legal_screen_nmi_timer += 1;
             self.general_counter = 0xff;
@@ -251,7 +251,7 @@ impl State {
     }
 
     fn title_screen(&mut self, input: Input) -> bool {
-        self.render_mode = 0;
+        self.render_playfield = false;
         if self.title_screen_nmi_timer < 5 {
             self.title_screen_nmi_timer += 1;
             return 0 == self.game_mode_state;
@@ -268,7 +268,7 @@ impl State {
     }
 
     fn game_type_menu(&mut self, input: Input) -> bool {
-        self.render_mode = 1;
+        self.render_playfield = false;
 
         if self.game_type_menu_nmi_timer < 3 {
             self.game_type_menu_nmi_timer += 1;
@@ -294,7 +294,7 @@ impl State {
     }
 
     fn level_menu(&mut self, input: Input) -> bool {
-        self.render_mode = 1;
+        self.render_playfield = false;
 
         if self.level_menu_nmi_timer < 4 {
             self.level_menu_nmi_timer += 1;
@@ -434,7 +434,7 @@ impl State {
         self.score_high = 0;
         self.score_higher = 0;
         self.lines = 0;
-        self.render_mode = 3;
+        self.render_playfield = true;
         self.autorepeat_y = 0xa0;
         self.current_piece = self.choose_next_tetrimino();
         self.random.step();
@@ -472,8 +472,8 @@ impl State {
             return false;
         }
 
-        if self.render_mode == 3 && pressed_input.get(Input::Start) && self.play_state != 10 {
-            self.render_mode = 0;
+        if self.render_playfield && pressed_input.get(Input::Start) && self.play_state != 10 {
+            self.render_playfield = false;
             self.nmi_wait_point = 1;
             return false;
         }
@@ -489,7 +489,7 @@ impl State {
         }
 
         self.vram_row = 0;
-        self.render_mode = 3;
+        self.render_playfield = true;
         self.game_mode_state += 1;
         self.nmi_wait_point = 0;
     }
@@ -930,17 +930,10 @@ impl State {
     }
 
     fn render(&mut self) {
-        match self.render_mode {
-            0 => (),
-            1 => (),
-            2 => todo!(),
-            3 => self.render_mode_play_and_demo(),
-            4 => todo!(),
-            _ => panic!("invalid render mode"),
+        if !self.render_playfield {
+            return;
         }
-    }
 
-    fn render_mode_play_and_demo(&mut self) {
         if self.play_state == 4 {
             self.update_line_clearing_animation();
             self.vram_row = 0;
