@@ -50,8 +50,8 @@ pub struct State {
     pub start_init_playfield_dummy: bool,
     pub playfield_init_counter: u8,
     pub timeout_counter: u8,
-    pub type_a_wait_timer: u8,
     pub playfield_generated: bool,
+    pub delay_timer: u8,
 }
 
 impl State {
@@ -143,8 +143,8 @@ impl State {
             start_init_playfield_dummy: false,
             playfield_init_counter: 0,
             timeout_counter: 0,
-            type_a_wait_timer: 0,
             playfield_generated: false,
+            delay_timer: 0,
         }
     }
 
@@ -159,6 +159,15 @@ impl State {
             self.random.step();
         }
 
+        if self.delay_timer > 0 {
+            self.delay_timer -= 1;
+            self.previous_input = input.clone();
+            if self.delay_timer == 0 {
+                self.do_nmi = true;
+            }
+            return;
+        }
+
         if self.reset_nmi_timer < 3 {
             self.random = Random::new();
             self.game_mode_state = 0;
@@ -171,11 +180,6 @@ impl State {
             if self.paused {
                 self.previous_input = input.clone();
                 return;
-            }
-        } else if self.type_a_wait_timer != 0 {
-            self.type_a_wait_timer -= 1;
-            if self.type_a_wait_timer == 0 {
-                self.game_mode_state = 2;
             }
         } else if self.start_init_playfield || self.initializing_playfield {
             if self.start_init_playfield {
@@ -925,10 +929,6 @@ impl State {
         }
         self.initializing_playfield = false;
         self.do_nmi = true;
-
-        for y in 0..=Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
-            self.playfield[y as usize] = 0xef;
-        }
     }
 
     fn generate_playfield(&mut self) {
@@ -956,6 +956,10 @@ impl State {
 
             let general_counter5 = self.random.get_value() & 0xf;
             let y = general_counter5 + Self::MULT_BY10_TABLE[general_counter2 as usize];
+            self.playfield[y as usize] = 0xef;
+        }
+
+        for y in 0..=Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
             self.playfield[y as usize] = 0xef;
         }
     }
