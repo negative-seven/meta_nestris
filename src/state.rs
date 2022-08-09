@@ -164,19 +164,17 @@ impl State {
                 self.previous_input = input.clone();
                 return;
             }
-        } else if self.initializing_playfield {
-            self.init_playfield_if_type_b();
-            if self.initializing_playfield {
-                self.previous_input = input.clone();
-                return;
-            }
         } else if self.start_init_playfield {
-            self.start_init_playfield = false;
-            self.init_playfield_if_type_b();
-            self.game_mode_state = 2;
-            if self.start_init_playfield {
-                self.previous_input = input.clone();
-                return;
+            if !self.initializing_playfield {
+                self.start_init_playfield = false;
+                self.game_mode_state = 2;
+            }
+            if self.game_type == 1 {
+                self.init_playfield_for_type_b();
+                if self.initializing_playfield {
+                    self.previous_input = input.clone();
+                    return;
+                }
             }
         }
 
@@ -267,8 +265,6 @@ impl State {
             self.title_screen_nmi_timer = 0;
             return;
         }
-
-        return;
     }
 
     fn level_menu(&mut self, input: Input) {
@@ -365,7 +361,14 @@ impl State {
 
     fn play_and_ending_high_score(&mut self, input: Input) -> bool {
         match self.game_mode_state {
-            0 => self.init_game_background(),
+            0 => {
+                if self.init_game_background_nmi_timer < 3 {
+                    self.init_game_background_nmi_timer += 1;
+                    return true;
+                }
+                self.game_mode_state = 1;
+                false
+            }
             1 => {
                 self.init_game_state();
                 false
@@ -378,8 +381,8 @@ impl State {
             }
             7 => {
                 self.start_button_handling(input);
-                self.game_mode_state = 8;
-                false
+                self.game_mode_state = 2;
+                true
             }
             8 => {
                 self.game_mode_state = 2;
@@ -389,19 +392,9 @@ impl State {
         }
     }
 
-    fn init_game_background(&mut self) -> bool {
-        if self.init_game_background_nmi_timer < 3 {
-            self.init_game_background_nmi_timer += 1;
-            return true;
-        }
-
+    fn init_game_state(&mut self) {
         self.play_state = 1;
         self.level_number = self.start_level;
-        self.game_mode_state = 1;
-        false
-    }
-
-    fn init_game_state(&mut self) {
         self.tetrimino_x = 5;
         self.tetrimino_y = 0;
         self.vram_row = 0;
@@ -897,12 +890,8 @@ impl State {
         }
     }
 
-    fn init_playfield_if_type_b(&mut self) {
+    fn init_playfield_for_type_b(&mut self) {
         if !self.start_init_playfield {
-            if self.game_type == 0 {
-                return;
-            }
-
             self.general_counter = 0xc;
         }
         if self.general_counter != 0 {
@@ -938,7 +927,5 @@ impl State {
         for y in 0..=Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
             self.playfield[y as usize] = 0xef;
         }
-
-        return;
     }
 }
