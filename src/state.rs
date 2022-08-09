@@ -270,12 +270,8 @@ impl State {
             return 0 == self.game_mode_state;
         }
 
-        loop {
-            let pressed_input = input.difference(self.previous_input);
-            if pressed_input == Input::Start {
-                break;
-            }
-
+        let pressed_input = input.difference(self.previous_input);
+        if pressed_input != Input::Start {
             return 0 == self.game_mode_state;
         }
 
@@ -292,24 +288,22 @@ impl State {
             return 0 == self.game_mode_state;
         }
 
-        loop {
-            let pressed_input = input.difference(self.previous_input);
-            if pressed_input == Input::Right {
-                self.game_type = 1;
-            } else if pressed_input == Input::Left {
-                self.game_type = 0;
-            } else if pressed_input == Input::Start {
-                self.game_mode += 1;
-                self.level_menu_nmi_timer = 0;
-                return 0 == self.game_mode_state;
-            } else if pressed_input == Input::B {
-                self.game_mode -= 1;
-                self.title_screen_nmi_timer = 0;
-                return 0 == self.game_mode_state;
-            }
-
+        let pressed_input = input.difference(self.previous_input);
+        if pressed_input == Input::Right {
+            self.game_type = 1;
+        } else if pressed_input == Input::Left {
+            self.game_type = 0;
+        } else if pressed_input == Input::Start {
+            self.game_mode += 1;
+            self.level_menu_nmi_timer = 0;
+            return 0 == self.game_mode_state;
+        } else if pressed_input == Input::B {
+            self.game_mode -= 1;
+            self.title_screen_nmi_timer = 0;
             return 0 == self.game_mode_state;
         }
+
+        return 0 == self.game_mode_state;
     }
 
     fn level_menu(&mut self, input: Input) -> bool {
@@ -324,30 +318,28 @@ impl State {
             return 0 == self.game_mode_state;
         }
 
-        loop {
-            self.selecting_level_or_height = self.original_y;
-            self.level_menu_handle_level_height_navigation(input);
-            self.original_y = self.selecting_level_or_height;
+        self.selecting_level_or_height = self.original_y;
+        self.level_menu_handle_level_height_navigation(input);
+        self.original_y = self.selecting_level_or_height;
 
-            let pressed_input = input.difference(self.previous_input);
-            if pressed_input == Input::Start {
-                if input == Input::Start | Input::A {
-                    self.start_level += 10;
-                }
-                self.game_mode_state = 0;
-                self.game_mode += 1;
-                return 0 == self.game_mode_state;
+        let pressed_input = input.difference(self.previous_input);
+        if pressed_input == Input::Start {
+            if input == Input::Start | Input::A {
+                self.start_level += 10;
             }
-
-            if pressed_input == Input::B {
-                self.game_type_menu_nmi_timer = 0;
-                self.game_mode -= 1;
-                return 0 == self.game_mode_state;
-            }
-
-            self.random.choose_random_holes();
+            self.game_mode_state = 0;
+            self.game_mode += 1;
             return 0 == self.game_mode_state;
         }
+
+        if pressed_input == Input::B {
+            self.game_type_menu_nmi_timer = 0;
+            self.game_mode -= 1;
+            return 0 == self.game_mode_state;
+        }
+
+        self.random.choose_random_holes();
+        return 0 == self.game_mode_state;
     }
 
     fn level_menu_handle_level_height_navigation(&mut self, input: Input) {
@@ -567,9 +559,8 @@ impl State {
             self.general_counter += (self.tetrimino_y << 3) + self.tetrimino_x + carry;
             let general_counter2 = self.current_piece << 2;
             let mut x = general_counter2 + (self.current_piece << 3);
-            let mut general_counter3 = 4;
 
-            loop {
+            for _ in 0..4 {
                 let general_counter4 = Self::ORIENTATION_TABLE[x as usize] << 1;
                 let selecting_level_or_height = u8::wrapping_add(
                     general_counter4,
@@ -584,10 +575,6 @@ impl State {
                 );
                 self.playfield[y as usize] = general_counter5;
                 x += 1;
-                general_counter3 -= 1;
-                if general_counter3 == 0 {
-                    break;
-                }
             }
 
             self.line_index = 0;
@@ -610,20 +597,14 @@ impl State {
         self.general_counter = general_counter2 << 1;
         self.general_counter += general_counter2 << 3;
         let mut y = self.general_counter;
-        let mut x = 10;
 
-        loop {
+        for _ in 0..10 {
             if self.playfield[y as usize] == 0xef {
                 self.completed_row[self.line_index as usize] = 0;
                 self.increment_line_index();
                 return;
             }
             y += 1;
-            x -= 1;
-
-            if x == 0 {
-                break;
-            }
         }
 
         self.completed_lines += 1;
@@ -632,19 +613,14 @@ impl State {
         let mut y = u8::wrapping_sub(self.general_counter, 1);
         loop {
             self.playfield[y as usize + 10] = self.playfield[y as usize];
-            y = u8::wrapping_sub(y, 1);
-            if y == 0xff {
+            if y == 0 {
                 break;
             }
+            y = u8::wrapping_sub(y, 1);
         }
 
-        let mut y = 0;
-        loop {
+        for y in 0..10 {
             self.playfield[y] = 0xef;
-            y += 1;
-            if y == 0xa {
-                break;
-            }
         }
 
         self.current_piece = 0x13;
@@ -689,9 +665,7 @@ impl State {
             return;
         }
 
-        let mut x = self.completed_lines;
-
-        loop {
+        for _ in 0..self.completed_lines {
             self.lines += 1;
             if self.lines & 0xf >= 0xa {
                 self.lines += 6;
@@ -711,11 +685,6 @@ impl State {
                 if self.level_number < self.general_counter {
                     self.level_number += 1;
                 }
-            }
-
-            x -= 1;
-            if x == 0 {
-                break;
             }
         }
         self.add_hold_down_points();
@@ -809,9 +778,8 @@ impl State {
         self.general_counter += u8::wrapping_add(self.tetrimino_y << 3, self.tetrimino_x);
         let general_counter2 = self.current_piece << 2;
         let mut x = general_counter2 + (self.current_piece << 3);
-        let mut general_counter3 = 4;
 
-        loop {
+        for _ in 0..4 {
             if u8::wrapping_add(Self::ORIENTATION_TABLE[x as usize], self.tetrimino_y + 2) >= 0x16 {
                 self.general_counter = 0xff;
                 return false;
@@ -837,11 +805,6 @@ impl State {
                 return false;
             }
             x += 1;
-            general_counter3 -= 1;
-
-            if general_counter3 == 0 {
-                break;
-            }
         }
 
         self.general_counter = 0;
@@ -958,8 +921,7 @@ impl State {
 
     fn add_line_clear_points(&mut self) {
         self.hold_down_points = 0;
-        self.general_counter = self.level_number + 1;
-        loop {
+        for _ in 0..self.level_number + 1 {
             self.score += Self::POINTS_TABLE[(self.completed_lines << 1) as usize];
             if self.score >= 0xa0 {
                 self.score = u8::wrapping_add(self.score, 0x60);
@@ -980,10 +942,6 @@ impl State {
                 self.score = 0x99;
                 self.score_high = 0x99;
                 self.score_higher = 0x99;
-            }
-            self.general_counter -= 1;
-            if self.general_counter == 0 {
-                break;
             }
         }
         self.completed_lines = 0;
@@ -1043,24 +1001,15 @@ impl State {
 
             self.general_counter = 0xc;
         }
-        loop {
-            if self.general_counter == 0 {
-                break;
-            }
-
+        if self.general_counter != 0 {
             let general_counter2 = 0x14 - self.general_counter;
             self.vram_row = 0;
-            let mut general_counter3 = 9;
-            loop {
+            for general_counter3 in (0..10).rev() {
                 self.random.step();
                 let general_counter4 = Self::RNG_TABLE[(self.random.get_value() & 7) as usize];
                 let x = general_counter2;
                 let y = Self::MULT_BY10_TABLE[x as usize] + general_counter3;
                 self.playfield[y as usize] = general_counter4;
-                if general_counter3 == 0 {
-                    break;
-                }
-                general_counter3 -= 1;
             }
 
             loop {
@@ -1080,14 +1029,8 @@ impl State {
         }
         self.nmi_wait_point = 0;
 
-        let x = self.start_height;
-        let mut y = Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[x as usize];
-        loop {
+        for y in 0..=Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
             self.playfield[y as usize] = 0xef;
-            y = u8::wrapping_sub(y, 1);
-            if y == 0xff {
-                break;
-            }
         }
 
         return;
