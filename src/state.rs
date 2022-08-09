@@ -149,9 +149,9 @@ impl State {
         }
     }
 
-    pub fn step(&mut self, input: &Input) -> Option<State> {
+    pub fn step(&mut self, input: &Input) {
         if self.dead {
-            return None;
+            return;
         }
 
         if self.do_nmi {
@@ -164,7 +164,7 @@ impl State {
             self.game_mode_state += 1;
             if self.nmi_wait_point != 0 {
                 self.previous_input = input.clone();
-                return None;
+                return;
             }
         }
 
@@ -178,7 +178,7 @@ impl State {
             if self.nmi_wait_point == 0 {
                 let a = self.branch_on_game_mode(input);
                 if self.dead {
-                    return None;
+                    return;
                 }
                 if self.nmi_wait_point == 0 && a == self.game_mode_state {
                     break;
@@ -208,7 +208,6 @@ impl State {
         }
 
         self.previous_input = input.clone();
-        None
     }
 
     fn reset_vector(&mut self) {
@@ -417,12 +416,24 @@ impl State {
             0 => self.init_game_background(),
             1 => self.init_game_state(),
             2 => self.update_counters_and_non_player_state(),
-            3 => self.handle_game_over(),
+            3 => {
+                self.game_mode_state += 1;
+                1
+            }
             4 => self.update_player1(input),
-            5 => self.update_player2(),
-            6 => self.check_for_reset_key_combo(input),
+            5 => {
+                self.game_mode_state += 1;
+                0
+            }
+            6 => {
+                self.game_mode_state += 1;
+                input.states.data[0]
+            }
             7 => self.start_button_handling(input),
-            8 => self.vblank_then_run_state2(),
+            8 => {
+                self.game_mode_state = 2;
+                2
+            }
             _ => panic!("invalid game mode state"),
         }
     }
@@ -436,7 +447,7 @@ impl State {
         self.play_state = 1;
         self.level_number = self.start_level;
         self.game_mode_state += 1;
-        0 // player2_startLevel
+        0
     }
 
     fn init_game_state(&mut self) -> u8 {
@@ -471,29 +482,13 @@ impl State {
     fn update_counters_and_non_player_state(&mut self) -> u8 {
         self.fall_timer += 1;
         self.game_mode_state += 1;
-        0 // 0 or 1
-    }
-
-    fn handle_game_over(&mut self) -> u8 {
-        self.game_mode_state += 1;
-        1
+        0
     }
 
     fn update_player1(&mut self, input: &Input) -> u8 {
-        self.make_player1_active();
         self.branch_on_play_state_player1(input);
         self.game_mode_state += 1;
-        0 // TODO: unsure, complicated
-    }
-
-    fn update_player2(&mut self) -> u8 {
-        self.game_mode_state += 1;
-        0 // TODO: unsure, complicated
-    }
-
-    fn check_for_reset_key_combo(&mut self, input: &Input) -> u8 {
-        self.game_mode_state += 1;
-        input.states.data[0]
+        0
     }
 
     fn start_button_handling(&mut self, input: &Input) -> u8 {
@@ -527,35 +522,28 @@ impl State {
         self.nmi_wait_point = 0;
     }
 
-    fn vblank_then_run_state2(&mut self) -> u8 {
-        self.game_mode_state = 2;
-        2
-    }
-
-    fn make_player1_active(&self) {
-        return;
-    }
-
     fn branch_on_play_state_player1(&mut self, input: &Input) {
         match self.play_state {
-            0 => self.unassign_orientation_id(),
+            0 => {
+                self.current_piece = 0x13;
+            }
             1 => self.player_controls_active_tetrimino(input),
             2 => self.lock_tetrimino(),
             3 => self.check_for_completed_rows(),
             4 => (),
             5 => self.update_lines_and_statistics(),
             6 => self.b_type_goal_check(),
-            7 => self.receive_garbage(),
+            7 => {
+                self.play_state += 1;
+            }
             8 => self.spawn_next_tetrimino(),
             9 => (),
-            10 => self.update_game_over_curtain(),
-            11 => self.increment_play_state(),
+            10 => (),
+            11 => {
+                self.play_state += 1;
+            }
             _ => panic!("invalid play state"),
         }
-    }
-
-    fn unassign_orientation_id(&mut self) {
-        self.current_piece = 0x13;
     }
 
     fn player_controls_active_tetrimino(&mut self, input: &Input) {
@@ -765,12 +753,7 @@ impl State {
             return;
         }
 
-        todo!(); // may not be needed
-    }
-
-    fn receive_garbage(&mut self) {
-        self.play_state += 1;
-        return;
+        todo!();
     }
 
     fn spawn_next_tetrimino(&mut self) {
@@ -784,14 +767,6 @@ impl State {
         self.current_piece = Self::SPAWN_ORIENTATION_FROM_ORIENTATION[self.next_piece as usize];
         self.next_piece = self.choose_next_tetrimino();
         self.autorepeat_y = 0;
-    }
-
-    fn update_game_over_curtain(&self) {
-        return;
-    }
-
-    fn increment_play_state(&mut self) {
-        self.play_state += 1;
     }
 
     fn shift_tetrimino(&mut self, input: &Input) {
@@ -886,7 +861,6 @@ impl State {
             self.current_piece = Self::ROTATION_TABLE[x as usize];
             if !self.is_position_valid() {
                 self.current_piece = original_y;
-                return;
             }
             return;
         }
@@ -947,7 +921,6 @@ impl State {
         self.tetrimino_y = original_y;
         self.play_state = 2;
         self.update_playfield();
-        return;
     }
 
     fn lookup_drop_speed(&mut self) {
@@ -970,7 +943,6 @@ impl State {
         self.tetrimino_y = original_y;
         self.play_state = 2;
         self.update_playfield();
-        return;
     }
 
     fn update_playfield(&mut self) {
@@ -1019,17 +991,13 @@ impl State {
 
     fn render(&mut self) {
         match self.render_mode {
-            0 => self.render_mode_legal_and_title_screen(),
-            1 => self.render_mode_menu_screens(),
+            0 => (),
+            1 => (),
             2 => todo!(),
             3 => self.render_mode_play_and_demo(),
             4 => todo!(),
             _ => panic!("invalid render mode"),
         }
-    }
-
-    fn render_mode_menu_screens(&mut self) {
-        return;
     }
 
     fn render_mode_play_and_demo(&mut self) {
@@ -1064,10 +1032,6 @@ impl State {
         if self.vram_row >= 0x14 {
             self.vram_row = 0x20;
         }
-    }
-
-    fn render_mode_legal_and_title_screen(&mut self) {
-        return;
     }
 
     fn init_playfield_if_type_b(&mut self) {
