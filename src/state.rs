@@ -15,32 +15,26 @@ pub struct State {
     pub tetrimino_y: u8,
     pub fall_timer: u8,
     pub game_mode_state: u8,
-    pub allegro: u8,
-    pub spawn_id: u8,
     pub render_mode: u8,
     pub autorepeat_y: u8,
     pub current_piece: u8,
     pub next_piece: u8,
     pub vram_row: u8,
-    pub pending_garbage: u8,
     pub lines: u8,
     pub lines_high: u8,
     pub play_state: u8,
     pub autorepeat_x: u8,
     pub general_counter: u8,
     pub playfield: [u8; 0x110],
-    pub drop_speed: u8,
     pub level_number: u8,
     pub hold_down_points: u8,
     pub game_mode: u8,
     pub line_index: u8,
-    pub curtain_row: u8,
     pub completed_lines: u8,
     pub game_type: u8,
     pub completed_row: [u8; 4],
     pub row_y: u8,
     pub frame_counter: u8,
-    pub reset: u8,
     pub legal_screen_nmi_timer: u16,
     pub legal_screen_skip_timer: u8,
     pub title_screen_nmi_timer: u8,
@@ -108,31 +102,25 @@ impl State {
             tetrimino_y: 0,
             game_mode_state: 0,
             fall_timer: 0,
-            allegro: 0,
-            spawn_id: 0,
             render_mode: 3,
             autorepeat_y: 0,
             current_piece: 0,
             next_piece: 0,
             vram_row: 0,
-            pending_garbage: 0,
             lines: 0,
             lines_high: 0,
             play_state: 0,
             autorepeat_x: 0,
             general_counter: 0,
             playfield: [0xef; 0x110],
-            drop_speed: 0,
             level_number: 0,
             hold_down_points: 0,
             game_mode: 4,
             line_index: 0,
-            curtain_row: 0,
             completed_lines: 0,
             game_type: 0,
             completed_row: [0; 4],
             row_y: 0,
-            reset: 0,
             legal_screen_nmi_timer: 0,
             legal_screen_skip_timer: 0,
             title_screen_nmi_timer: 0,
@@ -215,7 +203,6 @@ impl State {
             return;
         }
 
-        self.reset += 1;
         self.init_ram();
     }
 
@@ -313,7 +300,6 @@ impl State {
             self.level_menu_nmi_timer += 1;
             self.do_nmi = self.level_menu_nmi_timer != 1;
             self.original_y = 0;
-            self.drop_speed = 0;
             self.start_level %= 10;
             return 0 == self.game_mode_state;
         }
@@ -444,13 +430,10 @@ impl State {
         self.tetrimino_y = 0;
         self.vram_row = 0;
         self.fall_timer = 0;
-        self.pending_garbage = 0;
         self.score = 0;
         self.score_high = 0;
         self.score_higher = 0;
         self.lines = 0;
-        self.allegro = 0;
-        self.spawn_id = 0;
         self.render_mode = 3;
         self.autorepeat_y = 0xa0;
         self.current_piece = self.choose_next_tetrimino();
@@ -544,7 +527,6 @@ impl State {
     fn lock_tetrimino(&mut self) {
         if !self.is_position_valid() {
             self.play_state = 0xa;
-            self.curtain_row = 0xf0;
             self.dead = true;
             return;
         }
@@ -893,8 +875,7 @@ impl State {
         if x < 0x1d {
             a = Self::FRAMES_PER_DROP_TABLE[x as usize];
         }
-        self.drop_speed = a;
-        if self.fall_timer < self.drop_speed {
+        if self.fall_timer < a {
             return;
         }
 
