@@ -149,7 +149,7 @@ impl State {
 
         if self.do_nmi {
             self.render();
-            self.frame_counter = u8::wrapping_add(self.frame_counter, 1);
+            self.frame_counter = (self.frame_counter + 1) % 4;
             self.random.step();
         }
 
@@ -865,7 +865,7 @@ impl State {
         }
 
         if self.play_state == 4 {
-            if self.frame_counter & 0x3 == 0 {
+            if self.frame_counter == 0 {
                 self.row_y += 1;
                 if self.row_y >= 5 {
                     self.play_state = 5;
