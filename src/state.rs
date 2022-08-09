@@ -47,8 +47,11 @@ pub struct State {
     pub paused: bool,
     pub initializing_playfield: bool,
     pub start_init_playfield: bool,
+    pub start_init_playfield_dummy: bool,
     pub playfield_init_counter: u8,
     pub timeout_counter: u8,
+    pub type_a_wait_timer: u8,
+    pub playfield_generated: bool,
 }
 
 impl State {
@@ -137,8 +140,11 @@ impl State {
             paused: false,
             initializing_playfield: false,
             start_init_playfield: false,
+            start_init_playfield_dummy: false,
             playfield_init_counter: 0,
             timeout_counter: 0,
+            type_a_wait_timer: 0,
+            playfield_generated: false,
         }
     }
 
@@ -166,24 +172,34 @@ impl State {
                 self.previous_input = input.clone();
                 return;
             }
+        } else if self.type_a_wait_timer != 0 {
+            self.type_a_wait_timer -= 1;
+            if self.type_a_wait_timer == 0 {
+                self.game_mode_state = 2;
+            }
         } else if self.start_init_playfield {
             if !self.initializing_playfield {
-                self.start_init_playfield = false;
                 self.game_mode_state = 2;
                 self.playfield_init_counter = 12;
             }
-            if self.game_type == 1 {
-                self.init_playfield_for_type_b();
-                if self.initializing_playfield {
-                    self.previous_input = input.clone();
-                    return;
-                }
+            self.init_playfield_for_type_b();
+            if self.initializing_playfield {
+                self.previous_input = input.clone();
+                return;
             }
+        } else if self.start_init_playfield_dummy {
+            self.start_init_playfield_dummy = false;
+            self.game_mode_state = 2;
         }
 
         loop {
             let a = self.branch_on_game_mode(input);
-            if self.dead || self.start_init_playfield || a || self.paused {
+            if self.dead
+                || self.start_init_playfield
+                || self.start_init_playfield_dummy
+                || a
+                || self.paused
+            {
                 self.previous_input = input.clone();
                 return;
             }
@@ -414,7 +430,12 @@ impl State {
         if self.game_type != 0 {
             self.lines = 0x25;
         }
-        self.start_init_playfield = true;
+        if self.game_type == 0 {
+            self.start_init_playfield_dummy = true;
+        } else {
+            self.do_nmi = false;
+            self.start_init_playfield = true;
+        }
     }
 
     fn choose_next_tetrimino(&mut self) -> u8 {
@@ -887,8 +908,37 @@ impl State {
     }
 
     fn init_playfield_for_type_b(&mut self) {
+        if !self.playfield_generated {
+            self.generate_playfield();
+            self.playfield_generated = true;
+            self.render();
+            self.frame_counter = (self.frame_counter + 1) % 4;
+            self.random.step();
+        }
+
         if self.playfield_init_counter != 0 {
-            let general_counter2 = 0x14 - self.playfield_init_counter;
+            self.playfield_init_counter -= 1;
+
+            self.start_init_playfield = true;
+            self.initializing_playfield = true;
+            return;
+        }
+        self.start_init_playfield = false;
+        self.initializing_playfield = false;
+        self.do_nmi = true;
+
+        for y in 0..=Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
+            self.playfield[y as usize] = 0xef;
+        }
+    }
+
+    fn generate_playfield(&mut self) {
+        for c in (1..13).rev() {
+            self.render();
+            self.frame_counter = (self.frame_counter + 1) % 4;
+            self.random.step();
+
+            let general_counter2 = 0x14 - c;
             self.vram_row = 0;
             for general_counter3 in (0..10).rev() {
                 self.random.step();
@@ -907,17 +957,6 @@ impl State {
 
             let general_counter5 = self.random.get_value() & 0xf;
             let y = general_counter5 + Self::MULT_BY10_TABLE[general_counter2 as usize];
-            self.playfield[y as usize] = 0xef;
-            self.playfield_init_counter -= 1;
-
-            self.start_init_playfield = true;
-            self.initializing_playfield = true;
-            return;
-        }
-        self.start_init_playfield = false;
-        self.initializing_playfield = false;
-
-        for y in 0..=Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
             self.playfield[y as usize] = 0xef;
         }
     }
