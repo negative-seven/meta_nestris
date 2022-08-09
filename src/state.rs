@@ -530,21 +530,20 @@ impl State {
         }
 
         if self.vram_row >= 32 {
-            self.general_counter = self.tetrimino_y << 1;
-            let carry = if self.general_counter as u16 + (self.tetrimino_y << 3) as u16 >= 0x100 {
+            self.general_counter = self.tetrimino_y * 2;
+            let carry = if self.general_counter as u16 + (self.tetrimino_y * 8) as u16 >= 0x100 {
                 1
             } else {
                 0
             };
-            self.general_counter += (self.tetrimino_y << 3) + self.tetrimino_x + carry;
-            let general_counter2 = self.current_piece << 2;
-            let mut x = general_counter2 + (self.current_piece << 3);
+            self.general_counter += (self.tetrimino_y * 8) + self.tetrimino_x + carry;
+            let mut x = self.current_piece * 12;
 
             for _ in 0..4 {
-                let general_counter4 = Self::ORIENTATION_TABLE[x as usize] << 1;
+                let general_counter4 = u8::wrapping_mul(Self::ORIENTATION_TABLE[x as usize], 2);
                 let selecting_level_or_height = u8::wrapping_add(
                     general_counter4,
-                    u8::wrapping_add(general_counter4 << 2, self.general_counter),
+                    u8::wrapping_add(u8::wrapping_mul(general_counter4, 4), self.general_counter),
                 );
                 x += 1;
                 let general_counter5 = Self::ORIENTATION_TABLE[x as usize];
@@ -574,8 +573,8 @@ impl State {
             self.tetrimino_y - 2
         } + self.line_index;
 
-        self.general_counter = general_counter2 << 1;
-        self.general_counter += general_counter2 << 3;
+        self.general_counter = general_counter2 * 2;
+        self.general_counter += general_counter2 * 8;
         let mut y = self.general_counter;
 
         for _ in 0..10 {
@@ -659,9 +658,8 @@ impl State {
                 let general_counter2 = self.lines_high;
                 self.general_counter = self.lines;
 
-                // lsr/ror hell
-                self.general_counter >>= 4;
-                self.general_counter |= general_counter2 << 4;
+                self.general_counter /= 16;
+                self.general_counter |= general_counter2 * 16;
                 if self.level_number < self.general_counter {
                     self.level_number += 1;
                 }
@@ -740,10 +738,9 @@ impl State {
     }
 
     fn is_position_valid(&mut self) -> bool {
-        self.general_counter = self.tetrimino_y << 1;
-        self.general_counter += u8::wrapping_add(self.tetrimino_y << 3, self.tetrimino_x);
-        let general_counter2 = self.current_piece << 2;
-        let mut x = general_counter2 + (self.current_piece << 3);
+        self.general_counter = self.tetrimino_y * 2;
+        self.general_counter += u8::wrapping_add(self.tetrimino_y * 8, self.tetrimino_x);
+        let mut x = self.current_piece * 12;
 
         for _ in 0..4 {
             if u8::wrapping_add(Self::ORIENTATION_TABLE[x as usize], self.tetrimino_y + 2) >= 0x16 {
@@ -751,9 +748,9 @@ impl State {
                 return false;
             }
 
-            let general_counter4 = Self::ORIENTATION_TABLE[x as usize] << 1;
+            let general_counter4 = u8::wrapping_mul(Self::ORIENTATION_TABLE[x as usize], 2);
             let selecting_level_or_height = u8::wrapping_add(
-                Self::ORIENTATION_TABLE[x as usize] << 3,
+                u8::wrapping_mul(Self::ORIENTATION_TABLE[x as usize], 8),
                 u8::wrapping_add(general_counter4, self.general_counter),
             );
             x += 2;
@@ -780,7 +777,7 @@ impl State {
 
     fn rotate_tetrimino(&mut self, input: Input) {
         let original_y = self.current_piece;
-        let mut x = self.current_piece << 1;
+        let mut x = self.current_piece * 2;
         let pressed_input = input.difference(self.previous_input);
         if pressed_input.get(Input::A) {
             x += 1;
@@ -887,12 +884,12 @@ impl State {
     fn add_line_clear_points(&mut self) {
         self.hold_down_points = 0;
         for _ in 0..self.level_number + 1 {
-            self.score += Self::POINTS_TABLE[(self.completed_lines << 1) as usize];
+            self.score += Self::POINTS_TABLE[(self.completed_lines * 2) as usize];
             if self.score >= 0xa0 {
                 self.score = u8::wrapping_add(self.score, 0x60);
                 self.score_high += 1;
             }
-            self.score_high += Self::POINTS_TABLE[(self.completed_lines << 1) as usize + 1];
+            self.score_high += Self::POINTS_TABLE[(self.completed_lines * 2) as usize + 1];
             if self.score_high & 0xf >= 0xa {
                 self.score_high += 6;
             }
