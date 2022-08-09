@@ -205,9 +205,18 @@ impl State {
     fn branch_on_game_mode(&mut self, input: Input) -> bool {
         match self.game_mode {
             0 => self.legal_screen(input),
-            1 => self.title_screen(input),
-            2 => self.game_type_menu(input),
-            3 => self.level_menu(input),
+            1 => {
+                self.title_screen(input);
+                true
+            }
+            2 => {
+                self.game_type_menu(input);
+                true
+            }
+            3 => {
+                self.level_menu(input);
+                true
+            }
             4 => self.play_and_ending_high_score(input),
             _ => todo!("game mode {}", self.game_mode),
         }
@@ -219,43 +228,42 @@ impl State {
             self.legal_screen_nmi_timer += 1;
             self.general_counter = 0xff;
             self.do_nmi = self.legal_screen_nmi_timer != 2;
-            return 0 == self.game_mode_state;
+            return true;
         }
 
         let pressed_input = input.difference(self.previous_input);
         if pressed_input != 0x10 && self.general_counter != 0 {
             self.general_counter -= 1;
-            return 0 == self.game_mode_state;
+            return true;
         }
 
         self.game_mode = 1;
         self.title_screen_nmi_timer = 0;
-        return 0x10 == self.game_mode_state;
+        false
     }
 
-    fn title_screen(&mut self, input: Input) -> bool {
+    fn title_screen(&mut self, input: Input) {
         self.render_playfield = false;
         if self.title_screen_nmi_timer < 5 {
             self.title_screen_nmi_timer += 1;
-            return 0 == self.game_mode_state;
+            return;
         }
 
         let pressed_input = input.difference(self.previous_input);
         if pressed_input != Input::Start {
-            return 0 == self.game_mode_state;
+            return;
         }
 
         self.game_mode = 2;
         self.game_type_menu_nmi_timer = 0;
-        return 0 == self.game_mode_state;
     }
 
-    fn game_type_menu(&mut self, input: Input) -> bool {
+    fn game_type_menu(&mut self, input: Input) {
         self.render_playfield = false;
 
         if self.game_type_menu_nmi_timer < 3 {
             self.game_type_menu_nmi_timer += 1;
-            return 0 == self.game_mode_state;
+            return;
         }
 
         let pressed_input = input.difference(self.previous_input);
@@ -266,17 +274,17 @@ impl State {
         } else if pressed_input == Input::Start {
             self.game_mode = 3;
             self.level_menu_nmi_timer = 0;
-            return 0 == self.game_mode_state;
+            return;
         } else if pressed_input == Input::B {
             self.game_mode = 1;
             self.title_screen_nmi_timer = 0;
-            return 0 == self.game_mode_state;
+            return;
         }
 
-        return 0 == self.game_mode_state;
+        return;
     }
 
-    fn level_menu(&mut self, input: Input) -> bool {
+    fn level_menu(&mut self, input: Input) {
         self.render_playfield = false;
 
         if self.level_menu_nmi_timer < 4 {
@@ -284,7 +292,7 @@ impl State {
             self.do_nmi = self.level_menu_nmi_timer != 1;
             self.original_y = 0;
             self.start_level %= 10;
-            return 0 == self.game_mode_state;
+            return;
         }
 
         self.selecting_level_or_height = self.original_y;
@@ -298,17 +306,16 @@ impl State {
             }
             self.game_mode_state = 0;
             self.game_mode = 4;
-            return 0 == self.game_mode_state;
+            return;
         }
 
         if pressed_input == Input::B {
             self.game_type_menu_nmi_timer = 0;
             self.game_mode = 2;
-            return 0 == self.game_mode_state;
+            return;
         }
 
         self.random.choose_random_holes();
-        return 0 == self.game_mode_state;
     }
 
     fn level_menu_handle_level_height_navigation(&mut self, input: Input) {
@@ -372,26 +379,21 @@ impl State {
     fn play_and_ending_high_score(&mut self, input: Input) -> bool {
         match self.game_mode_state {
             0 => self.init_game_background(),
-            1 => self.init_game_state(),
+            1 => {
+                self.init_game_state();
+                false
+            }
             2 => {
                 self.fall_timer += 1;
-                self.game_mode_state = 3;
-                false
-            }
-            3 => {
-                self.game_mode_state = 4;
-                false
-            }
-            4 => self.update_player1(input),
-            5 => {
-                self.game_mode_state = 6;
-                false
-            }
-            6 => {
+                self.update_player1(input);
                 self.game_mode_state = 7;
                 input == self.game_mode_state
             }
-            7 => self.start_button_handling(input),
+            7 => {
+                self.start_button_handling(input);
+                self.game_mode_state = 8;
+                false
+            }
             8 => {
                 self.game_mode_state = 2;
                 true
@@ -412,7 +414,7 @@ impl State {
         false
     }
 
-    fn init_game_state(&mut self) -> bool {
+    fn init_game_state(&mut self) {
         self.tetrimino_x = 5;
         self.tetrimino_y = 0;
         self.vram_row = 0;
@@ -430,7 +432,6 @@ impl State {
             self.lines = 0x25;
         }
         self.start_init_playfield = true;
-        false
     }
 
     fn choose_next_tetrimino(&mut self) -> u8 {
@@ -438,29 +439,23 @@ impl State {
         return piece as u8;
     }
 
-    fn update_player1(&mut self, input: Input) -> bool {
+    fn update_player1(&mut self, input: Input) {
         self.branch_on_play_state_player1(input);
         self.game_mode_state = 5;
-        false
     }
 
-    fn start_button_handling(&mut self, input: Input) -> bool {
+    fn start_button_handling(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
 
         if self.game_mode == 5 && pressed_input == Input::Start {
             self.game_mode = 1;
             self.game_mode_state = 8;
-            return false;
         }
 
         if self.render_playfield && pressed_input.get(Input::Start) && self.play_state != 10 {
             self.render_playfield = false;
             self.paused = true;
-            return false;
         }
-
-        self.game_mode_state = 8;
-        false
     }
 
     fn pause_loop(&mut self, input: Input) {
