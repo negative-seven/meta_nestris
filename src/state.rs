@@ -45,12 +45,9 @@ pub struct State {
     pub start_height: u8,
     pub reset_nmi_timer: u8,
     pub paused: bool,
-    pub initializing_playfield: bool,
-    pub start_init_playfield: bool,
-    pub start_init_playfield_dummy: bool,
-    pub playfield_init_counter: u8,
+    pub init_playfield: bool,
+    pub init_playfield_dummy: bool,
     pub timeout_counter: u8,
-    pub playfield_generated: bool,
     pub delay_timer: u8,
 }
 
@@ -138,12 +135,9 @@ impl State {
             init_game_background_nmi_timer: 0,
             start_height: 0,
             paused: false,
-            initializing_playfield: false,
-            start_init_playfield: false,
-            start_init_playfield_dummy: false,
-            playfield_init_counter: 0,
+            init_playfield: false,
+            init_playfield_dummy: false,
             timeout_counter: 0,
-            playfield_generated: false,
             delay_timer: 0,
         }
     }
@@ -161,11 +155,12 @@ impl State {
 
         if self.delay_timer > 0 {
             self.delay_timer -= 1;
-            self.previous_input = input.clone();
             if self.delay_timer == 0 {
                 self.do_nmi = true;
+            } else {
+                self.previous_input = input.clone();
+                return;
             }
-            return;
         }
 
         if self.reset_nmi_timer < 3 {
@@ -181,27 +176,21 @@ impl State {
                 self.previous_input = input.clone();
                 return;
             }
-        } else if self.start_init_playfield || self.initializing_playfield {
-            if self.start_init_playfield {
-                self.game_mode_state = 2;
-                self.playfield_init_counter = 12;
-            }
+        } else if self.init_playfield {
             self.init_playfield_for_type_b();
-            if self.initializing_playfield {
-                self.previous_input = input.clone();
-                return;
-            }
-        } else if self.start_init_playfield_dummy {
-            self.start_init_playfield_dummy = false;
+            self.game_mode_state = 2;
+            self.previous_input = input.clone();
+            return;
+        } else if self.init_playfield_dummy {
+            self.init_playfield_dummy = false;
             self.game_mode_state = 2;
         }
 
         loop {
             let a = self.branch_on_game_mode(input);
             if self.dead
-                || self.start_init_playfield
-                || self.initializing_playfield
-                || self.start_init_playfield_dummy
+                || self.init_playfield
+                || self.init_playfield_dummy
                 || a
                 || self.paused
             {
@@ -436,10 +425,10 @@ impl State {
             self.lines = 0x25;
         }
         if self.game_type == 0 {
-            self.start_init_playfield_dummy = true;
+            self.init_playfield_dummy = true;
         } else {
             self.do_nmi = false;
-            self.start_init_playfield = true;
+            self.init_playfield = true;
         }
     }
 
@@ -913,22 +902,13 @@ impl State {
     }
 
     fn init_playfield_for_type_b(&mut self) {
-        if !self.playfield_generated {
-            self.generate_playfield();
-            self.playfield_generated = true;
-            self.render();
-            self.frame_counter = (self.frame_counter + 1) % 4;
-            self.random.step();
-        }
+        self.generate_playfield();
+        self.render();
+        self.frame_counter = (self.frame_counter + 1) % 4;
+        self.random.step();
 
-        if self.playfield_init_counter != 0 {
-            self.playfield_init_counter -= 1;
-            self.initializing_playfield = true;
-            self.start_init_playfield = false;
-            return;
-        }
-        self.initializing_playfield = false;
-        self.do_nmi = true;
+        self.delay_timer = 12;
+        self.init_playfield = false;
     }
 
     fn generate_playfield(&mut self) {
