@@ -146,11 +146,15 @@ impl State {
         }
 
         if self.do_nmi {
-            self.nmi();
+            self.render();
+            self.frame_counter = u8::wrapping_add(self.frame_counter, 1);
+            self.random.step();
         }
 
         if self.reset_nmi_timer < 3 {
-            self.reset_vector();
+            self.random = Random::new();
+            self.game_mode_state = 0;
+            self.game_mode = 0;
             self.reset_nmi_timer += 1;
             self.previous_input = input.clone();
             return;
@@ -183,23 +187,6 @@ impl State {
                 return;
             }
         }
-    }
-
-    fn reset_vector(&mut self) {
-        self.init_ram();
-    }
-
-    fn init_ram(&mut self) {
-        self.random = Random::new();
-        self.game_mode_state = 0;
-        self.game_mode = 0;
-        return;
-    }
-
-    fn nmi(&mut self) {
-        self.render();
-        self.frame_counter = u8::wrapping_add(self.frame_counter, 1);
-        self.random.step();
     }
 
     fn branch_on_game_mode(&mut self, input: Input) -> bool {
@@ -385,7 +372,7 @@ impl State {
             }
             2 => {
                 self.fall_timer += 1;
-                self.update_player1(input);
+                self.branch_on_play_state_player1(input);
                 self.game_mode_state = 7;
                 input == self.game_mode_state
             }
@@ -437,11 +424,6 @@ impl State {
     fn choose_next_tetrimino(&mut self) -> u8 {
         let piece = self.random.next_piece();
         return piece as u8;
-    }
-
-    fn update_player1(&mut self, input: Input) {
-        self.branch_on_play_state_player1(input);
-        self.game_mode_state = 5;
     }
 
     fn start_button_handling(&mut self, input: Input) {
