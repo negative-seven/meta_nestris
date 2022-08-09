@@ -390,7 +390,11 @@ impl State {
         match self.game_mode_state {
             0 => self.init_game_background(),
             1 => self.init_game_state(),
-            2 => self.update_counters_and_non_player_state(),
+            2 => {
+                self.fall_timer += 1;
+                self.game_mode_state = 3;
+                false
+            }
             3 => {
                 self.game_mode_state = 4;
                 false
@@ -451,12 +455,6 @@ impl State {
         return piece as u8;
     }
 
-    fn update_counters_and_non_player_state(&mut self) -> bool {
-        self.fall_timer += 1;
-        self.game_mode_state = 3;
-        false
-    }
-
     fn update_player1(&mut self, input: Input) -> bool {
         self.branch_on_play_state_player1(input);
         self.game_mode_state = 5;
@@ -499,12 +497,18 @@ impl State {
             0 => {
                 self.current_piece = 0x13;
             }
-            1 => self.player_controls_active_tetrimino(input),
+            1 => {
+                self.shift_tetrimino(input);
+                self.rotate_tetrimino(input);
+                self.drop_tetrimino(input);
+            }
             2 => self.lock_tetrimino(),
             3 => self.check_for_completed_rows(),
             4 => (),
             5 => self.update_lines_and_statistics(),
-            6 => self.b_type_goal_check(),
+            6 => {
+                self.play_state = 7;
+            }
             7 => {
                 self.play_state = 8;
             }
@@ -516,12 +520,6 @@ impl State {
             }
             _ => panic!("invalid play state"),
         }
-    }
-
-    fn player_controls_active_tetrimino(&mut self, input: Input) {
-        self.shift_tetrimino(input);
-        self.rotate_tetrimino(input);
-        self.drop_tetrimino(input);
     }
 
     fn lock_tetrimino(&mut self) {
@@ -688,15 +686,6 @@ impl State {
             self.score_high += 1;
         }
         self.add_line_clear_points();
-    }
-
-    fn b_type_goal_check(&mut self) {
-        if self.game_type == 0 || self.lines != 0 {
-            self.play_state = 7;
-            return;
-        }
-
-        todo!();
     }
 
     fn spawn_next_tetrimino(&mut self) {
@@ -930,35 +919,24 @@ impl State {
         }
 
         if self.play_state == 4 {
-            self.update_line_clearing_animation();
+            if self.frame_counter & 0x3 == 0 {
+                self.row_y += 1;
+                if self.row_y >= 5 {
+                    self.play_state = 5;
+                }
+            }
             self.vram_row = 0;
         } else {
-            self.copy_playfield_row_to_vram();
-            self.copy_playfield_row_to_vram();
-            self.copy_playfield_row_to_vram();
-            self.copy_playfield_row_to_vram();
-        }
-    }
+            for _ in 0..4 {
+                if self.vram_row >= 0x15 {
+                    return;
+                }
 
-    fn update_line_clearing_animation(&mut self) {
-        if self.frame_counter & 0x3 != 0 {
-            return;
-        }
-
-        self.row_y += 1;
-        if self.row_y >= 5 {
-            self.play_state = 5;
-        }
-    }
-
-    fn copy_playfield_row_to_vram(&mut self) {
-        if self.vram_row >= 0x15 {
-            return;
-        }
-
-        self.vram_row += 1;
-        if self.vram_row >= 0x14 {
-            self.vram_row = 0x20;
+                self.vram_row += 1;
+                if self.vram_row >= 0x14 {
+                    self.vram_row = 0x20;
+                }
+            }
         }
     }
 
