@@ -45,6 +45,7 @@ pub struct State {
     pub selecting_level_or_height: u8,
     pub init_game_background_nmi_timer: u8,
     pub start_height: u8,
+    pub reset_nmi_timer: u8,
 }
 
 impl State {
@@ -90,7 +91,7 @@ impl State {
         Self {
             do_nmi: false,
             dead: false,
-            nmi_wait_point: -3,
+            nmi_wait_point: 0,
             previous_input: Input::new(),
             level: 0,
             score: 0,
@@ -121,6 +122,7 @@ impl State {
             game_type: 0,
             completed_row: [0; 4],
             row_y: 0,
+            reset_nmi_timer: 0,
             legal_screen_nmi_timer: 0,
             legal_screen_skip_timer: 0,
             title_screen_nmi_timer: 0,
@@ -143,56 +145,47 @@ impl State {
             self.nmi();
         }
 
-        if self.nmi_wait_point == 2 {
-            self.nmi_wait_point = 0;
-            self.init_playfield_if_type_b();
-            self.game_mode_state = 2;
-            if self.nmi_wait_point != 0 {
+        if self.reset_nmi_timer < 3 {
+            self.reset_vector();
+            self.reset_nmi_timer += 1;
+            self.previous_input = input.clone();
+            return;
+        }
+
+        match self.nmi_wait_point {
+            1 => {
+                self.pause_loop(input);
+                if self.nmi_wait_point != 0 {
+                    self.previous_input = input.clone();
+                    return;
+                }
+            }
+            2 => {
+                self.nmi_wait_point = 0;
+                self.init_playfield_if_type_b();
+                self.game_mode_state = 2;
+                if self.nmi_wait_point != 0 {
+                    self.previous_input = input.clone();
+                    return;
+                }
+            }
+            3 => {
+                self.init_playfield_if_type_b();
+                if self.nmi_wait_point == 3 {
+                    self.previous_input = input.clone();
+                    return;
+                }
+            }
+            _ => (),
+        }
+
+        loop {
+            let a = self.branch_on_game_mode(input);
+            if self.dead || self.nmi_wait_point != 0 || a {
                 self.previous_input = input.clone();
                 return;
             }
         }
-
-        loop {
-            if self.nmi_wait_point < 0 {
-                self.reset_vector();
-                self.nmi_wait_point += 1;
-                break;
-            }
-
-            if self.nmi_wait_point == 0 {
-                let a = self.branch_on_game_mode(input);
-                if self.dead {
-                    return;
-                }
-                if self.nmi_wait_point == 0 && a {
-                    break;
-                }
-                if self.nmi_wait_point != 0 {
-                    break;
-                }
-            }
-
-            if self.nmi_wait_point == 1 {
-                self.pause_loop(input);
-                if self.nmi_wait_point == 1 {
-                    break;
-                }
-            }
-
-            if self.nmi_wait_point == 2 {
-                break;
-            }
-
-            if self.nmi_wait_point == 3 {
-                self.init_playfield_if_type_b();
-                if self.nmi_wait_point == 3 {
-                    break;
-                }
-            }
-        }
-
-        self.previous_input = input.clone();
     }
 
     fn reset_vector(&mut self) {
