@@ -177,8 +177,8 @@ impl State {
             if self.type_a_wait_timer == 0 {
                 self.game_mode_state = 2;
             }
-        } else if self.start_init_playfield {
-            if !self.initializing_playfield {
+        } else if self.start_init_playfield || self.initializing_playfield {
+            if self.start_init_playfield {
                 self.game_mode_state = 2;
                 self.playfield_init_counter = 12;
             }
@@ -196,6 +196,7 @@ impl State {
             let a = self.branch_on_game_mode(input);
             if self.dead
                 || self.start_init_playfield
+                || self.initializing_playfield
                 || self.start_init_playfield_dummy
                 || a
                 || self.paused
@@ -918,12 +919,10 @@ impl State {
 
         if self.playfield_init_counter != 0 {
             self.playfield_init_counter -= 1;
-
-            self.start_init_playfield = true;
             self.initializing_playfield = true;
+            self.start_init_playfield = false;
             return;
         }
-        self.start_init_playfield = false;
         self.initializing_playfield = false;
         self.do_nmi = true;
 
