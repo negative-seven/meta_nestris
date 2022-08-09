@@ -23,7 +23,6 @@ pub struct State {
     pub lines_high: u8,
     pub play_state: u8,
     pub autorepeat_x: u8,
-    pub general_counter: u8,
     pub playfield: [u8; 0x110],
     pub level_number: u8,
     pub hold_down_points: u8,
@@ -48,6 +47,8 @@ pub struct State {
     pub paused: bool,
     pub initializing_playfield: bool,
     pub start_init_playfield: bool,
+    pub playfield_init_counter: u8,
+    pub timeout_counter: u8,
 }
 
 impl State {
@@ -113,7 +114,6 @@ impl State {
             lines_high: 0,
             play_state: 0,
             autorepeat_x: 0,
-            general_counter: 0,
             playfield: [0xef; 0x110],
             level_number: 0,
             hold_down_points: 0,
@@ -137,6 +137,8 @@ impl State {
             paused: false,
             initializing_playfield: false,
             start_init_playfield: false,
+            playfield_init_counter: 0,
+            timeout_counter: 0,
         }
     }
 
@@ -168,6 +170,7 @@ impl State {
             if !self.initializing_playfield {
                 self.start_init_playfield = false;
                 self.game_mode_state = 2;
+                self.playfield_init_counter = 12;
             }
             if self.game_type == 1 {
                 self.init_playfield_for_type_b();
@@ -211,14 +214,14 @@ impl State {
         self.render_playfield = false;
         if self.legal_screen_nmi_timer < 264 {
             self.legal_screen_nmi_timer += 1;
-            self.general_counter = 0xff;
+            self.timeout_counter = 0xff;
             self.do_nmi = self.legal_screen_nmi_timer != 2;
             return true;
         }
 
         let pressed_input = input.difference(self.previous_input);
-        if pressed_input != 0x10 && self.general_counter != 0 {
-            self.general_counter -= 1;
+        if pressed_input != 0x10 && self.timeout_counter != 0 {
+            self.timeout_counter -= 1;
             return true;
         }
 
@@ -483,20 +486,20 @@ impl State {
         }
 
         if self.vram_row >= 32 {
-            self.general_counter = self.tetrimino_y * 2;
-            let carry = if self.general_counter as u16 + (self.tetrimino_y * 8) as u16 >= 0x100 {
+            let mut general_counter = self.tetrimino_y * 2;
+            let carry = if general_counter as u16 + (self.tetrimino_y * 8) as u16 >= 0x100 {
                 1
             } else {
                 0
             };
-            self.general_counter += (self.tetrimino_y * 8) + self.tetrimino_x + carry;
+            general_counter += (self.tetrimino_y * 8) + self.tetrimino_x + carry;
             let mut x = self.current_piece * 12;
 
             for _ in 0..4 {
                 let general_counter4 = u8::wrapping_mul(Self::ORIENTATION_TABLE[x as usize], 2);
                 let selecting_level_or_height = u8::wrapping_add(
                     general_counter4,
-                    u8::wrapping_add(u8::wrapping_mul(general_counter4, 4), self.general_counter),
+                    u8::wrapping_add(u8::wrapping_mul(general_counter4, 4), general_counter),
                 );
                 x += 1;
                 let general_counter5 = Self::ORIENTATION_TABLE[x as usize];
@@ -526,9 +529,9 @@ impl State {
             self.tetrimino_y - 2
         } + self.line_index;
 
-        self.general_counter = general_counter2 * 2;
-        self.general_counter += general_counter2 * 8;
-        let mut y = self.general_counter;
+        let mut general_counter = general_counter2 * 2;
+        general_counter += general_counter2 * 8;
+        let mut y = general_counter;
 
         for _ in 0..10 {
             if self.playfield[y as usize] == 0xef {
@@ -542,7 +545,7 @@ impl State {
         self.completed_lines += 1;
         self.completed_row[self.line_index as usize] = general_counter2;
 
-        let mut y = u8::wrapping_sub(self.general_counter, 1);
+        let mut y = u8::wrapping_sub(general_counter, 1);
         loop {
             self.playfield[y as usize + 10] = self.playfield[y as usize];
             if y == 0 {
@@ -580,8 +583,7 @@ impl State {
         }
 
         if self.game_type != 0 {
-            self.general_counter = self.completed_lines;
-            self.lines = u8::wrapping_sub(self.lines, self.general_counter);
+            self.lines = u8::wrapping_sub(self.lines, self.completed_lines);
             if self.lines >= 0x80 {
                 self.lines = 0;
                 self.add_hold_down_points();
@@ -609,11 +611,10 @@ impl State {
 
             if self.lines & 0xf == 0 {
                 let general_counter2 = self.lines_high;
-                self.general_counter = self.lines;
-
-                self.general_counter /= 16;
-                self.general_counter |= general_counter2 * 16;
-                if self.level_number < self.general_counter {
+                let mut general_counter = self.lines;
+                general_counter /= 16;
+                general_counter |= general_counter2 * 16;
+                if self.level_number < general_counter {
                     self.level_number += 1;
                 }
             }
@@ -691,20 +692,19 @@ impl State {
     }
 
     fn is_position_valid(&mut self) -> bool {
-        self.general_counter = self.tetrimino_y * 2;
-        self.general_counter += u8::wrapping_add(self.tetrimino_y * 8, self.tetrimino_x);
+        let mut general_counter = self.tetrimino_y * 2;
+        general_counter += u8::wrapping_add(self.tetrimino_y * 8, self.tetrimino_x);
         let mut x = self.current_piece * 12;
 
         for _ in 0..4 {
             if u8::wrapping_add(Self::ORIENTATION_TABLE[x as usize], self.tetrimino_y + 2) >= 0x16 {
-                self.general_counter = 0xff;
                 return false;
             }
 
             let general_counter4 = u8::wrapping_mul(Self::ORIENTATION_TABLE[x as usize], 2);
             let selecting_level_or_height = u8::wrapping_add(
                 u8::wrapping_mul(Self::ORIENTATION_TABLE[x as usize], 8),
-                u8::wrapping_add(general_counter4, self.general_counter),
+                u8::wrapping_add(general_counter4, general_counter),
             );
             x += 2;
             let y = u8::wrapping_add(
@@ -712,18 +712,14 @@ impl State {
                 selecting_level_or_height,
             );
             if self.playfield[y as usize] < 0xef {
-                self.general_counter = 0xff;
                 return false;
             }
 
             if u8::wrapping_add(Self::ORIENTATION_TABLE[x as usize], self.tetrimino_x) >= 10 {
-                self.general_counter = 0xff;
                 return false;
             }
             x += 1;
         }
-
-        self.general_counter = 0;
 
         true
     }
@@ -891,11 +887,8 @@ impl State {
     }
 
     fn init_playfield_for_type_b(&mut self) {
-        if !self.start_init_playfield {
-            self.general_counter = 0xc;
-        }
-        if self.general_counter != 0 {
-            let general_counter2 = 0x14 - self.general_counter;
+        if self.playfield_init_counter != 0 {
+            let general_counter2 = 0x14 - self.playfield_init_counter;
             self.vram_row = 0;
             for general_counter3 in (0..10).rev() {
                 self.random.step();
@@ -915,7 +908,7 @@ impl State {
             let general_counter5 = self.random.get_value() & 0xf;
             let y = general_counter5 + Self::MULT_BY10_TABLE[general_counter2 as usize];
             self.playfield[y as usize] = 0xef;
-            self.general_counter -= 1;
+            self.playfield_init_counter -= 1;
 
             self.start_init_playfield = true;
             self.initializing_playfield = true;
