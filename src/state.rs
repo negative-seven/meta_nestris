@@ -146,7 +146,7 @@ impl State {
         if self.nmi_wait_point == 2 {
             self.nmi_wait_point = 0;
             self.init_playfield_if_type_b();
-            self.game_mode_state += 1;
+            self.game_mode_state = 2;
             if self.nmi_wait_point != 0 {
                 self.previous_input = input.clone();
                 return;
@@ -245,7 +245,7 @@ impl State {
             return 0 == self.game_mode_state;
         }
 
-        self.game_mode += 1;
+        self.game_mode = 1;
         self.title_screen_nmi_timer = 0;
         return 0x10 == self.game_mode_state;
     }
@@ -262,7 +262,7 @@ impl State {
             return 0 == self.game_mode_state;
         }
 
-        self.game_mode += 1;
+        self.game_mode = 2;
         self.game_type_menu_nmi_timer = 0;
         return 0 == self.game_mode_state;
     }
@@ -281,11 +281,11 @@ impl State {
         } else if pressed_input == Input::Left {
             self.game_type = 0;
         } else if pressed_input == Input::Start {
-            self.game_mode += 1;
+            self.game_mode = 3;
             self.level_menu_nmi_timer = 0;
             return 0 == self.game_mode_state;
         } else if pressed_input == Input::B {
-            self.game_mode -= 1;
+            self.game_mode = 1;
             self.title_screen_nmi_timer = 0;
             return 0 == self.game_mode_state;
         }
@@ -314,13 +314,13 @@ impl State {
                 self.start_level += 10;
             }
             self.game_mode_state = 0;
-            self.game_mode += 1;
+            self.game_mode = 4;
             return 0 == self.game_mode_state;
         }
 
         if pressed_input == Input::B {
             self.game_type_menu_nmi_timer = 0;
-            self.game_mode -= 1;
+            self.game_mode = 2;
             return 0 == self.game_mode_state;
         }
 
@@ -392,16 +392,16 @@ impl State {
             1 => self.init_game_state(),
             2 => self.update_counters_and_non_player_state(),
             3 => {
-                self.game_mode_state += 1;
+                self.game_mode_state = 4;
                 false
             }
             4 => self.update_player1(input),
             5 => {
-                self.game_mode_state += 1;
+                self.game_mode_state = 6;
                 false
             }
             6 => {
-                self.game_mode_state += 1;
+                self.game_mode_state = 7;
                 input == self.game_mode_state
             }
             7 => self.start_button_handling(input),
@@ -421,7 +421,7 @@ impl State {
 
         self.play_state = 1;
         self.level_number = self.start_level;
-        self.game_mode_state += 1;
+        self.game_mode_state = 1;
         false
     }
 
@@ -453,13 +453,13 @@ impl State {
 
     fn update_counters_and_non_player_state(&mut self) -> bool {
         self.fall_timer += 1;
-        self.game_mode_state += 1;
+        self.game_mode_state = 3;
         false
     }
 
     fn update_player1(&mut self, input: Input) -> bool {
         self.branch_on_play_state_player1(input);
-        self.game_mode_state += 1;
+        self.game_mode_state = 5;
         false
     }
 
@@ -468,7 +468,7 @@ impl State {
 
         if self.game_mode == 5 && pressed_input == Input::Start {
             self.game_mode = 1;
-            self.game_mode_state += 1;
+            self.game_mode_state = 8;
             return false;
         }
 
@@ -478,7 +478,7 @@ impl State {
             return false;
         }
 
-        self.game_mode_state += 1;
+        self.game_mode_state = 8;
         false
     }
 
@@ -490,7 +490,7 @@ impl State {
 
         self.vram_row = 0;
         self.render_playfield = true;
-        self.game_mode_state += 1;
+        self.game_mode_state = 8;
         self.nmi_wait_point = 0;
     }
 
@@ -506,13 +506,13 @@ impl State {
             5 => self.update_lines_and_statistics(),
             6 => self.b_type_goal_check(),
             7 => {
-                self.play_state += 1;
+                self.play_state = 8;
             }
             8 => self.spawn_next_tetrimino(),
             9 => (),
             10 => (),
             11 => {
-                self.play_state += 1;
+                self.play_state = 12;
             }
             _ => panic!("invalid play state"),
         }
@@ -526,7 +526,7 @@ impl State {
 
     fn lock_tetrimino(&mut self) {
         if !self.is_position_valid() {
-            self.play_state = 0xa;
+            self.play_state = 10;
             self.dead = true;
             return;
         }
@@ -561,7 +561,7 @@ impl State {
 
             self.line_index = 0;
             self.update_playfield();
-            self.play_state += 1;
+            self.play_state = 3;
         }
     }
 
@@ -617,9 +617,9 @@ impl State {
 
         self.vram_row = 0;
         self.row_y = 0;
-        self.play_state += 1;
+        self.play_state = 4;
         if self.completed_lines == 0 {
-            self.play_state += 1;
+            self.play_state = 5;
         }
     }
 
@@ -691,13 +691,8 @@ impl State {
     }
 
     fn b_type_goal_check(&mut self) {
-        if self.game_type == 0 {
-            self.play_state += 1;
-            return;
-        }
-
-        if self.lines != 0 {
-            self.play_state += 1;
+        if self.game_type == 0 || self.lines != 0 {
+            self.play_state = 7;
             return;
         }
 
@@ -926,7 +921,7 @@ impl State {
             }
         }
         self.completed_lines = 0;
-        self.play_state += 1;
+        self.play_state = 6;
     }
 
     fn render(&mut self) {
@@ -952,7 +947,7 @@ impl State {
 
         self.row_y += 1;
         if self.row_y >= 5 {
-            self.play_state += 1;
+            self.play_state = 5;
         }
     }
 
