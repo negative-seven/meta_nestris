@@ -1,4 +1,4 @@
-use crate::{input::Input, random::Random};
+use crate::{input::Input, piece::Piece, random::Random};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct State {
@@ -46,43 +46,196 @@ pub struct State {
 }
 
 impl State {
-    const ORIENTATION_TABLE: [u8; 240] = [
-        0x00, 0x7B, 0xFF, 0x00, 0x7B, 0x00, 0x00, 0x7B, 0x01, 0xFF, 0x7B, 0x00, 0xFF, 0x7B, 0x00,
-        0x00, 0x7B, 0x00, 0x00, 0x7B, 0x01, 0x01, 0x7B, 0x00, 0x00, 0x7B, 0xFF, 0x00, 0x7B, 0x00,
-        0x00, 0x7B, 0x01, 0x01, 0x7B, 0x00, 0xFF, 0x7B, 0x00, 0x00, 0x7B, 0xFF, 0x00, 0x7B, 0x00,
-        0x01, 0x7B, 0x00, 0xFF, 0x7D, 0x00, 0x00, 0x7D, 0x00, 0x01, 0x7D, 0xFF, 0x01, 0x7D, 0x00,
-        0xFF, 0x7D, 0xFF, 0x00, 0x7D, 0xFF, 0x00, 0x7D, 0x00, 0x00, 0x7D, 0x01, 0xFF, 0x7D, 0x00,
-        0xFF, 0x7D, 0x01, 0x00, 0x7D, 0x00, 0x01, 0x7D, 0x00, 0x00, 0x7D, 0xFF, 0x00, 0x7D, 0x00,
-        0x00, 0x7D, 0x01, 0x01, 0x7D, 0x01, 0x00, 0x7C, 0xFF, 0x00, 0x7C, 0x00, 0x01, 0x7C, 0x00,
-        0x01, 0x7C, 0x01, 0xFF, 0x7C, 0x01, 0x00, 0x7C, 0x00, 0x00, 0x7C, 0x01, 0x01, 0x7C, 0x00,
-        0x00, 0x7B, 0xFF, 0x00, 0x7B, 0x00, 0x01, 0x7B, 0xFF, 0x01, 0x7B, 0x00, 0x00, 0x7D, 0x00,
-        0x00, 0x7D, 0x01, 0x01, 0x7D, 0xFF, 0x01, 0x7D, 0x00, 0xFF, 0x7D, 0x00, 0x00, 0x7D, 0x00,
-        0x00, 0x7D, 0x01, 0x01, 0x7D, 0x01, 0xFF, 0x7C, 0x00, 0x00, 0x7C, 0x00, 0x01, 0x7C, 0x00,
-        0x01, 0x7C, 0x01, 0x00, 0x7C, 0xFF, 0x00, 0x7C, 0x00, 0x00, 0x7C, 0x01, 0x01, 0x7C, 0xFF,
-        0xFF, 0x7C, 0xFF, 0xFF, 0x7C, 0x00, 0x00, 0x7C, 0x00, 0x01, 0x7C, 0x00, 0xFF, 0x7C, 0x01,
-        0x00, 0x7C, 0xFF, 0x00, 0x7C, 0x00, 0x00, 0x7C, 0x01, 0xFE, 0x7B, 0x00, 0xFF, 0x7B, 0x00,
-        0x00, 0x7B, 0x00, 0x01, 0x7B, 0x00, 0x00, 0x7B, 0xFE, 0x00, 0x7B, 0xFF, 0x00, 0x7B, 0x00,
-        0x00, 0x7B, 0x01, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0x00, 0x00, 0xFF, 0x00,
+    const ORIENTATION_TABLE: [[[u8; 3]; 4]; 20] = [
+        [
+            [0x00, 0x7B, 0xFF],
+            [0x00, 0x7B, 0x00],
+            [0x00, 0x7B, 0x01],
+            [0xFF, 0x7B, 0x00],
+        ],
+        [
+            [0xFF, 0x7B, 0x00],
+            [0x00, 0x7B, 0x00],
+            [0x00, 0x7B, 0x01],
+            [0x01, 0x7B, 0x00],
+        ],
+        [
+            [0x00, 0x7B, 0xFF],
+            [0x00, 0x7B, 0x00],
+            [0x00, 0x7B, 0x01],
+            [0x01, 0x7B, 0x00],
+        ],
+        [
+            [0xFF, 0x7B, 0x00],
+            [0x00, 0x7B, 0xFF],
+            [0x00, 0x7B, 0x00],
+            [0x01, 0x7B, 0x00],
+        ],
+        [
+            [0xFF, 0x7D, 0x00],
+            [0x00, 0x7D, 0x00],
+            [0x01, 0x7D, 0xFF],
+            [0x01, 0x7D, 0x00],
+        ],
+        [
+            [0xFF, 0x7D, 0xFF],
+            [0x00, 0x7D, 0xFF],
+            [0x00, 0x7D, 0x00],
+            [0x00, 0x7D, 0x01],
+        ],
+        [
+            [0xFF, 0x7D, 0x00],
+            [0xFF, 0x7D, 0x01],
+            [0x00, 0x7D, 0x00],
+            [0x01, 0x7D, 0x00],
+        ],
+        [
+            [0x00, 0x7D, 0xFF],
+            [0x00, 0x7D, 0x00],
+            [0x00, 0x7D, 0x01],
+            [0x01, 0x7D, 0x01],
+        ],
+        [
+            [0x00, 0x7C, 0xFF],
+            [0x00, 0x7C, 0x00],
+            [0x01, 0x7C, 0x00],
+            [0x01, 0x7C, 0x01],
+        ],
+        [
+            [0xFF, 0x7C, 0x01],
+            [0x00, 0x7C, 0x00],
+            [0x00, 0x7C, 0x01],
+            [0x01, 0x7C, 0x00],
+        ],
+        [
+            [0x00, 0x7B, 0xFF],
+            [0x00, 0x7B, 0x00],
+            [0x01, 0x7B, 0xFF],
+            [0x01, 0x7B, 0x00],
+        ],
+        [
+            [0x00, 0x7D, 0x00],
+            [0x00, 0x7D, 0x01],
+            [0x01, 0x7D, 0xFF],
+            [0x01, 0x7D, 0x00],
+        ],
+        [
+            [0xFF, 0x7D, 0x00],
+            [0x00, 0x7D, 0x00],
+            [0x00, 0x7D, 0x01],
+            [0x01, 0x7D, 0x01],
+        ],
+        [
+            [0xFF, 0x7C, 0x00],
+            [0x00, 0x7C, 0x00],
+            [0x01, 0x7C, 0x00],
+            [0x01, 0x7C, 0x01],
+        ],
+        [
+            [0x00, 0x7C, 0xFF],
+            [0x00, 0x7C, 0x00],
+            [0x00, 0x7C, 0x01],
+            [0x01, 0x7C, 0xFF],
+        ],
+        [
+            [0xFF, 0x7C, 0xFF],
+            [0xFF, 0x7C, 0x00],
+            [0x00, 0x7C, 0x00],
+            [0x01, 0x7C, 0x00],
+        ],
+        [
+            [0xFF, 0x7C, 0x01],
+            [0x00, 0x7C, 0xFF],
+            [0x00, 0x7C, 0x00],
+            [0x00, 0x7C, 0x01],
+        ],
+        [
+            [0xFE, 0x7B, 0x00],
+            [0xFF, 0x7B, 0x00],
+            [0x00, 0x7B, 0x00],
+            [0x01, 0x7B, 0x00],
+        ],
+        [
+            [0x00, 0x7B, 0xFE],
+            [0x00, 0x7B, 0xFF],
+            [0x00, 0x7B, 0x00],
+            [0x00, 0x7B, 0x01],
+        ],
+        [
+            [0x00, 0xFF, 0x00],
+            [0x00, 0xFF, 0x00],
+            [0x00, 0xFF, 0x00],
+            [0x00, 0xFF, 0x00],
+        ],
     ];
-    const ROTATION_TABLE: [u8; 38] = [
-        3, 1, 0, 2, 1, 3, 2, 0, 7, 5, 4, 6, 5, 7, 6, 4, 9, 9, 8, 8, 0xa, 0xa, 0xc, 0xc, 0xb, 0xb,
-        0x10, 0xe, 0xd, 0xf, 0xe, 0x10, 0xf, 0xd, 0x12, 0x12, 0x11, 0x11,
+    const ROTATION_TABLE: [Piece; 38] = [
+        Piece::TLeft,
+        Piece::TRight,
+        Piece::TUp,
+        Piece::TDown,
+        Piece::TRight,
+        Piece::TLeft,
+        Piece::TDown,
+        Piece::TUp,
+        Piece::JLeft,
+        Piece::JRight,
+        Piece::JUp,
+        Piece::JDown,
+        Piece::JRight,
+        Piece::JLeft,
+        Piece::JDown,
+        Piece::JUp,
+        Piece::ZVertical,
+        Piece::ZVertical,
+        Piece::ZHorizontal,
+        Piece::ZHorizontal,
+        Piece::O,
+        Piece::O,
+        Piece::SVertical,
+        Piece::SVertical,
+        Piece::SHorizontal,
+        Piece::SHorizontal,
+        Piece::LLeft,
+        Piece::LRight,
+        Piece::LUp,
+        Piece::LDown,
+        Piece::LRight,
+        Piece::LLeft,
+        Piece::LDown,
+        Piece::LUp,
+        Piece::IHorizontal,
+        Piece::IHorizontal,
+        Piece::IVertical,
+        Piece::IVertical,
     ];
     const FRAMES_PER_DROP_TABLE: [u8; 30] = [
-        0x30, 0x2B, 0x26, 0x21, 0x1C, 0x17, 0x12, 0x0D, 0x08, 0x06, 0x05, 0x05, 0x05, 0x04, 0x04,
-        0x04, 0x03, 0x03, 0x03, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x02, 0x01,
+        48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
+        2, 1,
     ];
-    const SPAWN_ORIENTATION_FROM_ORIENTATION: [u8; 19] = [
-        0x02, 0x02, 0x02, 0x02, 0x07, 0x07, 0x07, 0x07, 0x08, 0x08, 0x0A, 0x0B, 0x0B, 0x0E, 0x0E,
-        0x0E, 0x0E, 0x12, 0x12,
+    const SPAWN_ORIENTATION_FROM_ORIENTATION: [Piece; 19] = [
+        Piece::TDown,
+        Piece::TDown,
+        Piece::TDown,
+        Piece::TDown,
+        Piece::JLeft,
+        Piece::JLeft,
+        Piece::JLeft,
+        Piece::JLeft,
+        Piece::ZHorizontal,
+        Piece::ZHorizontal,
+        Piece::O,
+        Piece::SHorizontal,
+        Piece::SHorizontal,
+        Piece::LRight,
+        Piece::LRight,
+        Piece::LRight,
+        Piece::LRight,
+        Piece::IHorizontal,
+        Piece::IHorizontal,
     ];
-    const POINTS_TABLE: [u8; 10] = [0x00, 0x00, 0x40, 0, 0, 1, 0, 3, 0, 0x12];
-    const TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE: [u8; 6] = [0xc8, 0xaa, 0x96, 0x78, 0x64, 0x50];
+    const POINTS_TABLE: [u16; 5] = [0x0, 0x40, 0x100, 0x300, 0x1200];
+    const TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE: [u8; 6] = [200, 170, 150, 120, 100, 80];
     const RNG_TABLE: [u8; 8] = [0xef, 0x7b, 0xef, 0x7c, 0x7d, 0x7d, 0xef, 0xef];
-    const MULT_BY10_TABLE: [u8; 20] = [
-        0x00, 0x0A, 0x14, 0x1E, 0x28, 0x32, 0x3C, 0x46, 0x50, 0x5A, 0x64, 0x6E, 0x78, 0x82, 0x8C,
-        0x96, 0xA0, 0xAA, 0xB4, 0xBE,
-    ];
 
     pub fn new() -> Self {
         Self {
@@ -467,23 +620,23 @@ impl State {
                 0
             };
             general_counter += (self.tetrimino_y * 8) + self.tetrimino_x + carry;
-            let mut x = self.current_piece * 12;
 
-            for _ in 0..4 {
-                let general_counter4 = u8::wrapping_mul(Self::ORIENTATION_TABLE[x as usize], 2);
+            for x2 in 0..4 {
+                let general_counter4 = u8::wrapping_mul(
+                    Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0],
+                    2,
+                );
                 let selecting_level_or_height = u8::wrapping_add(
                     general_counter4,
                     u8::wrapping_add(u8::wrapping_mul(general_counter4, 4), general_counter),
                 );
-                x += 1;
-                let general_counter5 = Self::ORIENTATION_TABLE[x as usize];
-                x += 1;
+                let general_counter5 =
+                    Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1];
                 let y = u8::wrapping_add(
-                    Self::ORIENTATION_TABLE[x as usize],
+                    Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][2],
                     selecting_level_or_height,
                 );
                 self.playfield[y as usize] = general_counter5;
-                x += 1;
             }
 
             self.line_index = 0;
@@ -622,7 +775,8 @@ impl State {
         self.tetrimino_y = 0;
         self.play_state = 1;
         self.tetrimino_x = 5;
-        self.current_piece = Self::SPAWN_ORIENTATION_FROM_ORIENTATION[self.next_piece as usize];
+        self.current_piece =
+            Self::SPAWN_ORIENTATION_FROM_ORIENTATION[self.next_piece as usize] as u8;
         self.next_piece = self.choose_next_tetrimino();
         self.autorepeat_y = 0;
     }
@@ -668,31 +822,42 @@ impl State {
     fn is_position_valid(&mut self) -> bool {
         let mut general_counter = self.tetrimino_y * 2;
         general_counter += u8::wrapping_add(self.tetrimino_y * 8, self.tetrimino_x);
-        let mut x = self.current_piece * 12;
 
-        for _ in 0..4 {
-            if u8::wrapping_add(Self::ORIENTATION_TABLE[x as usize], self.tetrimino_y + 2) >= 0x16 {
+        for x2 in 0..4 {
+            if u8::wrapping_add(
+                Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0],
+                self.tetrimino_y + 2,
+            ) >= 0x16
+            {
                 return false;
             }
 
-            let general_counter4 = u8::wrapping_mul(Self::ORIENTATION_TABLE[x as usize], 2);
+            let general_counter4 = u8::wrapping_mul(
+                Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0],
+                2,
+            );
             let selecting_level_or_height = u8::wrapping_add(
-                u8::wrapping_mul(Self::ORIENTATION_TABLE[x as usize], 8),
+                u8::wrapping_mul(
+                    Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0],
+                    8,
+                ),
                 u8::wrapping_add(general_counter4, general_counter),
             );
-            x += 2;
             let y = u8::wrapping_add(
-                Self::ORIENTATION_TABLE[x as usize],
+                Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][2],
                 selecting_level_or_height,
             );
             if self.playfield[y as usize] < 0xef {
                 return false;
             }
 
-            if u8::wrapping_add(Self::ORIENTATION_TABLE[x as usize], self.tetrimino_x) >= 10 {
+            if u8::wrapping_add(
+                Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][2],
+                self.tetrimino_x,
+            ) >= 10
+            {
                 return false;
             }
-            x += 1;
         }
 
         true
@@ -704,14 +869,14 @@ impl State {
         let pressed_input = input.difference(self.previous_input);
         if pressed_input.get(Input::A) {
             x += 1;
-            self.current_piece = Self::ROTATION_TABLE[x as usize];
+            self.current_piece = Self::ROTATION_TABLE[x as usize] as u8;
             if !self.is_position_valid() {
                 self.current_piece = original_y;
             }
             return;
         }
         if pressed_input.get(Input::B) {
-            self.current_piece = Self::ROTATION_TABLE[x as usize];
+            self.current_piece = Self::ROTATION_TABLE[x as usize] as u8;
             if !self.is_position_valid() {
                 self.current_piece = original_y;
                 return;
@@ -807,12 +972,12 @@ impl State {
     fn add_line_clear_points(&mut self) {
         self.hold_down_points = 0;
         for _ in 0..self.level_number + 1 {
-            self.score += Self::POINTS_TABLE[(self.completed_lines * 2) as usize];
+            self.score += (Self::POINTS_TABLE[self.completed_lines as usize] & 0xff) as u8;
             if self.score >= 0xa0 {
                 self.score = u8::wrapping_add(self.score, 0x60);
                 self.score_high += 1;
             }
-            self.score_high += Self::POINTS_TABLE[(self.completed_lines * 2) as usize + 1];
+            self.score_high += (Self::POINTS_TABLE[self.completed_lines as usize] >> 8) as u8;
             if self.score_high & 0xf >= 0xa {
                 self.score_high += 6;
             }
@@ -882,7 +1047,7 @@ impl State {
                 self.random.step();
                 let general_counter4 = Self::RNG_TABLE[(self.random.get_value() & 7) as usize];
                 let x = general_counter2;
-                let y = Self::MULT_BY10_TABLE[x as usize] + general_counter3;
+                let y = x * 10 + general_counter3;
                 self.playfield[y as usize] = general_counter4;
             }
 
@@ -894,7 +1059,7 @@ impl State {
             }
 
             let general_counter5 = self.random.get_value() & 0xf;
-            let y = general_counter5 + Self::MULT_BY10_TABLE[general_counter2 as usize];
+            let y = general_counter5 + general_counter2 * 10;
             self.playfield[y as usize] = 0xef;
         }
 
