@@ -33,22 +33,16 @@ pub struct State {
     pub completed_row: [u8; 4],
     pub row_y: u8,
     pub frame_counter: u8,
-    pub legal_screen_nmi_timer: u16,
-    pub legal_screen_skip_timer: u8,
-    pub title_screen_nmi_timer: u8,
-    pub game_type_menu_nmi_timer: u8,
-    pub level_menu_nmi_timer: u8,
     pub start_level: u8,
     pub original_y: u8,
     pub selecting_level_or_height: u8,
-    pub init_game_background_nmi_timer: u8,
     pub start_height: u8,
-    pub reset_nmi_timer: u8,
     pub paused: bool,
     pub init_playfield: bool,
     pub init_playfield_dummy: bool,
     pub timeout_counter: u8,
-    pub delay_timer: u8,
+    pub delay_timer: u16,
+    pub reset_complete: bool,
 }
 
 impl State {
@@ -117,28 +111,22 @@ impl State {
             playfield: [0xef; 0x110],
             level_number: 0,
             hold_down_points: 0,
-            game_mode: 4,
+            game_mode: 0,
             line_index: 0,
             completed_lines: 0,
             game_type: 0,
             completed_row: [0; 4],
             row_y: 0,
-            reset_nmi_timer: 0,
-            legal_screen_nmi_timer: 0,
-            legal_screen_skip_timer: 0,
-            title_screen_nmi_timer: 0,
-            game_type_menu_nmi_timer: 0,
             start_level: 0,
-            level_menu_nmi_timer: 0,
             original_y: 0,
             selecting_level_or_height: 0,
-            init_game_background_nmi_timer: 0,
             start_height: 0,
             paused: false,
             init_playfield: false,
             init_playfield_dummy: false,
             timeout_counter: 0,
-            delay_timer: 0,
+            delay_timer: 268,
+            reset_complete: false,
         }
     }
 
@@ -153,6 +141,16 @@ impl State {
             self.random.step();
         }
 
+        if !self.reset_complete {
+            self.timeout_counter = 0xff;
+            for _ in 0..263 {
+                self.render();
+                self.frame_counter = (self.frame_counter + 1) % 4;
+                self.random.step();
+            }
+            self.reset_complete = true;
+        }
+
         if self.delay_timer > 0 {
             self.delay_timer -= 1;
             if self.delay_timer == 0 {
@@ -163,14 +161,7 @@ impl State {
             }
         }
 
-        if self.reset_nmi_timer < 3 {
-            self.random = Random::new();
-            self.game_mode_state = 0;
-            self.game_mode = 0;
-            self.reset_nmi_timer += 1;
-            self.previous_input = input.clone();
-            return;
-        } else if self.paused {
+        if self.paused {
             self.pause_loop(input);
             if self.paused {
                 self.previous_input = input.clone();
@@ -188,12 +179,7 @@ impl State {
 
         loop {
             let a = self.branch_on_game_mode(input);
-            if self.dead
-                || self.init_playfield
-                || self.init_playfield_dummy
-                || a
-                || self.paused
-            {
+            if self.dead || self.init_playfield || self.init_playfield_dummy || a || self.paused {
                 self.previous_input = input.clone();
                 return;
             }
@@ -221,13 +207,7 @@ impl State {
     }
 
     fn legal_screen(&mut self, input: Input) -> bool {
-        self.render_playfield = false;
-        if self.legal_screen_nmi_timer < 264 {
-            self.legal_screen_nmi_timer += 1;
-            self.timeout_counter = 0xff;
-            self.do_nmi = self.legal_screen_nmi_timer != 2;
-            return true;
-        }
+        self.do_nmi = true;
 
         let pressed_input = input.difference(self.previous_input);
         if pressed_input != 0x10 && self.timeout_counter != 0 {
@@ -236,34 +216,23 @@ impl State {
         }
 
         self.game_mode = 1;
-        self.title_screen_nmi_timer = 0;
-        false
+        self.delay_timer = 5;
+        self.render_playfield = false;
+        true
     }
 
     fn title_screen(&mut self, input: Input) {
-        self.render_playfield = false;
-        if self.title_screen_nmi_timer < 5 {
-            self.title_screen_nmi_timer += 1;
-            return;
-        }
-
         let pressed_input = input.difference(self.previous_input);
         if pressed_input != Input::Start {
             return;
         }
 
+        self.render_playfield = false;
         self.game_mode = 2;
-        self.game_type_menu_nmi_timer = 0;
+        self.delay_timer = 4;
     }
 
     fn game_type_menu(&mut self, input: Input) {
-        self.render_playfield = false;
-
-        if self.game_type_menu_nmi_timer < 3 {
-            self.game_type_menu_nmi_timer += 1;
-            return;
-        }
-
         let pressed_input = input.difference(self.previous_input);
         if pressed_input == Input::Right {
             self.game_type = 1;
@@ -271,25 +240,26 @@ impl State {
             self.game_type = 0;
         } else if pressed_input == Input::Start {
             self.game_mode = 3;
-            self.level_menu_nmi_timer = 0;
+            self.delay_timer = 5;
+            self.original_y = 0;
+            self.start_level %= 10;
+            self.render_playfield = false;
+            self.do_nmi = false;
+            for _ in 0..4 {
+                self.render();
+                self.frame_counter = (self.frame_counter + 1) % 4;
+                self.random.step();
+            }
             return;
         } else if pressed_input == Input::B {
             self.game_mode = 1;
-            self.title_screen_nmi_timer = 0;
+            self.delay_timer = 6;
             return;
         }
     }
 
     fn level_menu(&mut self, input: Input) {
-        self.render_playfield = false;
-
-        if self.level_menu_nmi_timer < 4 {
-            self.level_menu_nmi_timer += 1;
-            self.do_nmi = self.level_menu_nmi_timer != 1;
-            self.original_y = 0;
-            self.start_level %= 10;
-            return;
-        }
+        self.do_nmi = true;
 
         self.selecting_level_or_height = self.original_y;
         self.level_menu_handle_level_height_navigation(input);
@@ -302,11 +272,12 @@ impl State {
             }
             self.game_mode_state = 0;
             self.game_mode = 4;
+            self.delay_timer = 4;
             return;
         }
 
         if pressed_input == Input::B {
-            self.game_type_menu_nmi_timer = 0;
+            self.delay_timer = 4;
             self.game_mode = 2;
             return;
         }
@@ -375,10 +346,6 @@ impl State {
     fn play_and_ending_high_score(&mut self, input: Input) -> bool {
         match self.game_mode_state {
             0 => {
-                if self.init_game_background_nmi_timer < 3 {
-                    self.init_game_background_nmi_timer += 1;
-                    return true;
-                }
                 self.game_mode_state = 1;
                 false
             }
