@@ -432,9 +432,6 @@ impl State {
 
     fn branch_on_play_state_player1(&mut self, input: Input) {
         match self.play_state {
-            0 => {
-                self.current_piece = 0x13;
-            }
             1 => {
                 self.shift_tetrimino(input);
                 self.rotate_tetrimino(input);
@@ -451,11 +448,6 @@ impl State {
                 self.play_state = 8;
             }
             8 => self.spawn_next_tetrimino(),
-            9 => (),
-            10 => (),
-            11 => {
-                self.play_state = 12;
-            }
             _ => panic!("invalid play state"),
         }
     }
