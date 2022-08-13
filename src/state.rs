@@ -49,67 +49,6 @@ pub struct State {
 }
 
 impl State {
-    const ORIENTATION_TABLE: [[[i8; 2]; 4]; 19] = [
-        [[0, -1], [0, 0], [0, 1], [-1, 0]],
-        [[-1, 0], [0, 0], [0, 1], [1, 0]],
-        [[0, -1], [0, 0], [0, 1], [1, 0]],
-        [[-1, 0], [0, -1], [0, 0], [1, 0]],
-        [[-1, 0], [0, 0], [1, -1], [1, 0]],
-        [[-1, -1], [0, -1], [0, 0], [0, 1]],
-        [[-1, 0], [-1, 1], [0, 0], [1, 0]],
-        [[0, -1], [0, 0], [0, 1], [1, 1]],
-        [[0, -1], [0, 0], [1, 0], [1, 1]],
-        [[-1, 1], [0, 0], [0, 1], [1, 0]],
-        [[0, -1], [0, 0], [1, -1], [1, 0]],
-        [[0, 0], [0, 1], [1, -1], [1, 0]],
-        [[-1, 0], [0, 0], [0, 1], [1, 1]],
-        [[-1, 0], [0, 0], [1, 0], [1, 1]],
-        [[0, -1], [0, 0], [0, 1], [1, -1]],
-        [[-1, -1], [-1, 0], [0, 0], [1, 0]],
-        [[-1, 1], [0, -1], [0, 0], [0, 1]],
-        [[-2, 0], [-1, 0], [0, 0], [1, 0]],
-        [[0, -2], [0, -1], [0, 0], [0, 1]],
-    ];
-    const ROTATION_TABLE: [Piece; 38] = [
-        Piece::TLeft,
-        Piece::TRight,
-        Piece::TUp,
-        Piece::TDown,
-        Piece::TRight,
-        Piece::TLeft,
-        Piece::TDown,
-        Piece::TUp,
-        Piece::JLeft,
-        Piece::JRight,
-        Piece::JUp,
-        Piece::JDown,
-        Piece::JRight,
-        Piece::JLeft,
-        Piece::JDown,
-        Piece::JUp,
-        Piece::ZVertical,
-        Piece::ZVertical,
-        Piece::ZHorizontal,
-        Piece::ZHorizontal,
-        Piece::O,
-        Piece::O,
-        Piece::SVertical,
-        Piece::SVertical,
-        Piece::SHorizontal,
-        Piece::SHorizontal,
-        Piece::LLeft,
-        Piece::LRight,
-        Piece::LUp,
-        Piece::LDown,
-        Piece::LRight,
-        Piece::LLeft,
-        Piece::LDown,
-        Piece::LUp,
-        Piece::IHorizontal,
-        Piece::IHorizontal,
-        Piece::IVertical,
-        Piece::IVertical,
-    ];
     const FRAMES_PER_DROP_TABLE: [u8; 30] = [
         48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
         2, 1,
@@ -470,17 +409,9 @@ impl State {
         }
 
         if self.vram_row >= 32 {
-            for tile_index in 0..4 {
-                let x = i16::from(self.tetrimino_x)
-                    + i16::from(
-                        Self::ORIENTATION_TABLE[self.current_piece as usize][tile_index as usize]
-                            [1],
-                    );
-                let y = i16::from(self.tetrimino_y)
-                    + i16::from(
-                        Self::ORIENTATION_TABLE[self.current_piece as usize][tile_index as usize]
-                            [0],
-                    );
+            for (tile_offset_x, tile_offset_y) in self.current_piece.get_tile_offsets() {
+                let x = i16::from(self.tetrimino_x) + i16::from(*tile_offset_x);
+                let y = i16::from(self.tetrimino_y) + i16::from(*tile_offset_y);
                 let offset = (y * 10 + x) as u8;
                 self.playfield[(offset / 10) as usize][(offset % 10) as usize] = true;
             }
@@ -656,17 +587,17 @@ impl State {
     }
 
     fn is_position_valid(&mut self) -> bool {
-        for x2 in 0..4 {
-            if i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0])
+        for (tile_offset_x, tile_offset_y) in self.current_piece.get_tile_offsets() {
+            if i16::from(*tile_offset_y)
                 + i16::from(self.tetrimino_y)
                 >= 20
             {
                 return false;
             }
 
-            let y = i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1])
+            let y = i16::from(*tile_offset_x)
                 + i16::from(
-                    Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0] * 10,
+                    *tile_offset_y * 10,
                 )
                 + i16::from(u8::wrapping_add(self.tetrimino_y * 10, self.tetrimino_x));
             if self.playfield[(y as u8 / 10) as usize][(y as u8 % 10) as usize] {
@@ -674,7 +605,7 @@ impl State {
             }
 
             if u8::wrapping_add(
-                Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1] as u8,
+                *tile_offset_x as u8,
                 self.tetrimino_x,
             ) >= 10
             {
@@ -689,12 +620,12 @@ impl State {
         let original_y = self.current_piece;
         let pressed_input = input.difference(self.previous_input);
         if pressed_input.get(Input::A) {
-            self.current_piece = Self::ROTATION_TABLE[(self.current_piece as u8 * 2 + 1) as usize];
+            self.current_piece = self.current_piece.get_clockwise_rotation();
             if !self.is_position_valid() {
                 self.current_piece = original_y;
             }
         } else if pressed_input.get(Input::B) {
-            self.current_piece = Self::ROTATION_TABLE[(self.current_piece as u8 * 2) as usize];
+            self.current_piece = self.current_piece.get_counterclockwise_rotation();
             if !self.is_position_valid() {
                 self.current_piece = original_y;
             }
