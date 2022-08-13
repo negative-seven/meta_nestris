@@ -1,5 +1,5 @@
 use crate::{
-    game_mode::GameMode, game_mode_state::GameModeState, input::Input, piece::Piece, random::Random,
+    game_mode::GameMode, game_mode_state::GameModeState, input::Input, piece::Piece, random::Random, play_state::PlayState,
 };
 
 #[derive(Clone, Eq, PartialEq)]
@@ -23,7 +23,7 @@ pub struct State {
     pub vram_row: u8,
     pub lines: u8,
     pub lines_high: u8,
-    pub play_state: u8,
+    pub play_state: PlayState,
     pub autorepeat_x: u8,
     pub playfield: [[bool; 10]; 27],
     pub level_number: u8,
@@ -139,7 +139,7 @@ impl State {
             vram_row: 0,
             lines: 0,
             lines_high: 0,
-            play_state: 0,
+            play_state: PlayState::MoveTetrimino,
             autorepeat_x: 0,
             playfield: [[false; 10]; 27],
             level_number: 0,
@@ -404,7 +404,7 @@ impl State {
     }
 
     fn init_game_state(&mut self) {
-        self.play_state = 1;
+        self.play_state = PlayState::MoveTetrimino;
         self.level_number = self.start_level;
         self.tetrimino_x = 5;
         self.tetrimino_y = 0;
@@ -433,7 +433,7 @@ impl State {
     fn start_button_handling(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
 
-        if self.render_playfield && pressed_input.get(Input::Start) && self.play_state != 10 {
+        if self.render_playfield && pressed_input.get(Input::Start) {
             self.render_playfield = false;
             self.paused = true;
         }
@@ -453,29 +453,27 @@ impl State {
 
     fn branch_on_play_state_player1(&mut self, input: Input) {
         match self.play_state {
-            1 => {
+            PlayState::MoveTetrimino => {
                 self.shift_tetrimino(input);
                 self.rotate_tetrimino(input);
                 self.drop_tetrimino(input);
             }
-            2 => self.lock_tetrimino(),
-            3 => self.check_for_completed_rows(),
-            4 => (),
-            5 => self.update_lines_and_statistics(),
-            6 => {
-                self.play_state = 7;
+            PlayState::LockTetrimino => self.lock_tetrimino(),
+            PlayState::CheckForCompletedRows => self.check_for_completed_rows(),
+            PlayState::DoNothing => (),
+            PlayState::UpdateLinesAndStatistics => self.update_lines_and_statistics(),
+            PlayState::SkipTo7 => {
+                self.play_state = PlayState::SkipTo8;
             }
-            7 => {
-                self.play_state = 8;
+            PlayState::SkipTo8 => {
+                self.play_state = PlayState::SpawnNextTetrimino;
             }
-            8 => self.spawn_next_tetrimino(),
-            _ => panic!("invalid play state"),
+            PlayState::SpawnNextTetrimino => self.spawn_next_tetrimino(),
         }
     }
 
     fn lock_tetrimino(&mut self) {
         if !self.is_position_valid() {
-            self.play_state = 10;
             self.dead = true;
             return;
         }
@@ -498,7 +496,7 @@ impl State {
 
             self.line_index = 0;
             self.update_playfield();
-            self.play_state = 3;
+            self.play_state = PlayState::CheckForCompletedRows;
         }
     }
 
@@ -551,9 +549,9 @@ impl State {
 
         self.vram_row = 0;
         self.row_y = 0;
-        self.play_state = 4;
+        self.play_state = PlayState::DoNothing;
         if self.completed_lines == 0 {
-            self.play_state = 5;
+            self.play_state = PlayState::UpdateLinesAndStatistics;
         }
     }
 
@@ -627,7 +625,7 @@ impl State {
         }
         self.fall_timer = 0;
         self.tetrimino_y = 0;
-        self.play_state = 1;
+        self.play_state = PlayState::MoveTetrimino;
         self.tetrimino_x = 5;
         self.current_piece = self.next_piece;
         self.next_piece = self.random.next_piece();
@@ -771,7 +769,7 @@ impl State {
             return;
         }
         self.tetrimino_y = original_y;
-        self.play_state = 2;
+        self.play_state = PlayState::LockTetrimino;
         self.update_playfield();
     }
 
@@ -792,7 +790,7 @@ impl State {
             return;
         }
         self.tetrimino_y = original_y;
-        self.play_state = 2;
+        self.play_state = PlayState::LockTetrimino;
         self.update_playfield();
     }
 
@@ -831,7 +829,7 @@ impl State {
             }
         }
         self.completed_lines = 0;
-        self.play_state = 6;
+        self.play_state = PlayState::SkipTo7;
     }
 
     fn render(&mut self) {
@@ -839,11 +837,11 @@ impl State {
             return;
         }
 
-        if self.play_state == 4 {
+        if self.play_state == PlayState::DoNothing {
             if self.frame_counter == 0 {
                 self.row_y += 1;
                 if self.row_y >= 5 {
-                    self.play_state = 5;
+                    self.play_state = PlayState::UpdateLinesAndStatistics;
                 }
             }
             self.vram_row = 0;

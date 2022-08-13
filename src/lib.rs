@@ -5,4 +5,5 @@ pub mod state;
 
 mod game_mode_state;
 mod piece;
+mod play_state;
 mod random;
