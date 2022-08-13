@@ -46,26 +46,26 @@ pub struct State {
 }
 
 impl State {
-    const ORIENTATION_TABLE: [[[u8; 2]; 4]; 19] = [
-        [[0x00, 0xFF], [0x00, 0x00], [0x00, 0x01], [0xFF, 0x00]],
-        [[0xFF, 0x00], [0x00, 0x00], [0x00, 0x01], [0x01, 0x00]],
-        [[0x00, 0xFF], [0x00, 0x00], [0x00, 0x01], [0x01, 0x00]],
-        [[0xFF, 0x00], [0x00, 0xFF], [0x00, 0x00], [0x01, 0x00]],
-        [[0xFF, 0x00], [0x00, 0x00], [0x01, 0xFF], [0x01, 0x00]],
-        [[0xFF, 0xFF], [0x00, 0xFF], [0x00, 0x00], [0x00, 0x01]],
-        [[0xFF, 0x00], [0xFF, 0x01], [0x00, 0x00], [0x01, 0x00]],
-        [[0x00, 0xFF], [0x00, 0x00], [0x00, 0x01], [0x01, 0x01]],
-        [[0x00, 0xFF], [0x00, 0x00], [0x01, 0x00], [0x01, 0x01]],
-        [[0xFF, 0x01], [0x00, 0x00], [0x00, 0x01], [0x01, 0x00]],
-        [[0x00, 0xFF], [0x00, 0x00], [0x01, 0xFF], [0x01, 0x00]],
-        [[0x00, 0x00], [0x00, 0x01], [0x01, 0xFF], [0x01, 0x00]],
-        [[0xFF, 0x00], [0x00, 0x00], [0x00, 0x01], [0x01, 0x01]],
-        [[0xFF, 0x00], [0x00, 0x00], [0x01, 0x00], [0x01, 0x01]],
-        [[0x00, 0xFF], [0x00, 0x00], [0x00, 0x01], [0x01, 0xFF]],
-        [[0xFF, 0xFF], [0xFF, 0x00], [0x00, 0x00], [0x01, 0x00]],
-        [[0xFF, 0x01], [0x00, 0xFF], [0x00, 0x00], [0x00, 0x01]],
-        [[0xFE, 0x00], [0xFF, 0x00], [0x00, 0x00], [0x01, 0x00]],
-        [[0x00, 0xFE], [0x00, 0xFF], [0x00, 0x00], [0x00, 0x01]],
+    const ORIENTATION_TABLE: [[[i8; 2]; 4]; 19] = [
+        [[0, -1], [0, 0], [0, 1], [-1, 0]],
+        [[-1, 0], [0, 0], [0, 1], [1, 0]],
+        [[0, -1], [0, 0], [0, 1], [1, 0]],
+        [[-1, 0], [0, -1], [0, 0], [1, 0]],
+        [[-1, 0], [0, 0], [1, -1], [1, 0]],
+        [[-1, -1], [0, -1], [0, 0], [0, 1]],
+        [[-1, 0], [-1, 1], [0, 0], [1, 0]],
+        [[0, -1], [0, 0], [0, 1], [1, 1]],
+        [[0, -1], [0, 0], [1, 0], [1, 1]],
+        [[-1, 1], [0, 0], [0, 1], [1, 0]],
+        [[0, -1], [0, 0], [1, -1], [1, 0]],
+        [[0, 0], [0, 1], [1, -1], [1, 0]],
+        [[-1, 0], [0, 0], [0, 1], [1, 1]],
+        [[-1, 0], [0, 0], [1, 0], [1, 1]],
+        [[0, -1], [0, 0], [0, 1], [1, -1]],
+        [[-1, -1], [-1, 0], [0, 0], [1, 0]],
+        [[-1, 1], [0, -1], [0, 0], [0, 1]],
+        [[-2, 0], [-1, 0], [0, 0], [1, 0]],
+        [[0, -2], [0, -1], [0, 0], [0, 1]],
     ];
     const ROTATION_TABLE: [Piece; 38] = [
         Piece::TLeft,
@@ -520,16 +520,15 @@ impl State {
             let center_tile_offset = self.tetrimino_y * 10 + self.tetrimino_x; // assumption: self.tetrimino_y < 26, resulting in no carry
 
             for tile_index in 0..4 {
-                let additional_offset_y_component = u8::wrapping_mul(
-                    Self::ORIENTATION_TABLE[self.current_piece as usize][tile_index as usize][0],
-                    10,
-                );
+                let additional_offset_y_component = Self::ORIENTATION_TABLE
+                    [self.current_piece as usize][tile_index as usize][0]
+                    * 10;
                 let additional_offset_x_component =
                     Self::ORIENTATION_TABLE[self.current_piece as usize][tile_index as usize][1];
                 let additional_offset =
-                    u8::wrapping_add(additional_offset_x_component, additional_offset_y_component);
-                self.playfield[u8::wrapping_add(center_tile_offset, additional_offset) as usize] =
-                    true;
+                    additional_offset_x_component + additional_offset_y_component;
+                self.playfield[u8::wrapping_add(center_tile_offset, additional_offset as u8) as u8
+                    as usize] = true;
             }
 
             self.line_index = 0;
@@ -709,38 +708,33 @@ impl State {
     }
 
     fn is_position_valid(&mut self) -> bool {
-        let center_tile_offset = u8::wrapping_add(self.tetrimino_y * 10, self.tetrimino_x);
+        let center_tile_offset =
+            i16::from(u8::wrapping_add(self.tetrimino_y * 10, self.tetrimino_x));
 
         for x2 in 0..4 {
-            if u8::wrapping_add(
-                Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0],
-                self.tetrimino_y + 2,
-            ) >= 0x16
+            if i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0])
+                + i16::from(self.tetrimino_y)
+                + 2
+                >= 0x16
             {
                 return false;
             }
 
-            let general_counter4 = u8::wrapping_mul(
-                Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0],
-                2,
-            );
-            let selecting_level_or_height = u8::wrapping_add(
-                u8::wrapping_mul(
-                    Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0],
-                    8,
-                ),
-                u8::wrapping_add(general_counter4, center_tile_offset),
-            );
-            let y = u8::wrapping_add(
-                Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1],
-                selecting_level_or_height,
-            );
-            if self.playfield[y as usize] {
+            let general_counter4 =
+                i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0] * 2);
+            let selecting_level_or_height =
+                i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0] * 8)
+                    + general_counter4
+                    + center_tile_offset;
+            let y =
+                (i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1])
+                    + selecting_level_or_height);
+            if self.playfield[y as u8 as usize] {
                 return false;
             }
 
             if u8::wrapping_add(
-                Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1],
+                Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1] as u8,
                 self.tetrimino_x,
             ) >= 10
             {
