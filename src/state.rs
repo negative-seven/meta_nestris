@@ -1,4 +1,4 @@
-use crate::{input::Input, piece::Piece, random::Random};
+use crate::{game_mode::GameMode, input::Input, piece::Piece, random::Random};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct State {
@@ -26,7 +26,7 @@ pub struct State {
     pub playfield: [[bool; 10]; 27],
     pub level_number: u8,
     pub hold_down_points: u8,
-    pub game_mode: u8,
+    pub game_mode: GameMode,
     pub line_index: u8,
     pub completed_lines: u8,
     pub game_type: u8,
@@ -142,7 +142,7 @@ impl State {
             playfield: [[false; 10]; 27],
             level_number: 0,
             hold_down_points: 0,
-            game_mode: 0,
+            game_mode: GameMode::CopyrightScreen,
             line_index: 0,
             completed_lines: 0,
             game_type: 0,
@@ -224,21 +224,20 @@ impl State {
 
     fn branch_on_game_mode(&mut self, input: Input) -> bool {
         match self.game_mode {
-            0 => self.legal_screen(input),
-            1 => {
+            GameMode::CopyrightScreen => self.legal_screen(input),
+            GameMode::TitleScreen => {
                 self.title_screen(input);
                 true
             }
-            2 => {
+            GameMode::GameTypeSelect => {
                 self.game_type_menu(input);
                 true
             }
-            3 => {
+            GameMode::LevelSelect => {
                 self.level_menu(input);
                 true
             }
-            4 => self.play_and_ending_high_score(input),
-            _ => todo!("game mode {}", self.game_mode),
+            GameMode::Gameplay => self.play_and_ending_high_score(input),
         }
     }
 
@@ -251,7 +250,7 @@ impl State {
             return true;
         }
 
-        self.game_mode = 1;
+        self.game_mode = GameMode::TitleScreen;
         self.delay_timer = 5;
         self.render_playfield = false;
         true
@@ -264,7 +263,7 @@ impl State {
         }
 
         self.render_playfield = false;
-        self.game_mode = 2;
+        self.game_mode = GameMode::GameTypeSelect;
         self.delay_timer = 4;
     }
 
@@ -275,7 +274,7 @@ impl State {
         } else if pressed_input == Input::Left {
             self.game_type = 0;
         } else if pressed_input == Input::Start {
-            self.game_mode = 3;
+            self.game_mode = GameMode::LevelSelect;
             self.delay_timer = 5;
             self.original_y = 0;
             self.start_level %= 10;
@@ -287,7 +286,7 @@ impl State {
             }
             return;
         } else if pressed_input == Input::B {
-            self.game_mode = 1;
+            self.game_mode = GameMode::TitleScreen;
             self.delay_timer = 6;
             return;
         }
@@ -306,14 +305,14 @@ impl State {
                 self.start_level += 10;
             }
             self.game_mode_state = 0;
-            self.game_mode = 4;
+            self.game_mode = GameMode::Gameplay;
             self.delay_timer = 4;
             return;
         }
 
         if pressed_input == Input::B {
             self.delay_timer = 4;
-            self.game_mode = 2;
+            self.game_mode = GameMode::GameTypeSelect;
             return;
         }
 
@@ -436,11 +435,6 @@ impl State {
 
     fn start_button_handling(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
-
-        if self.game_mode == 5 && pressed_input == Input::Start {
-            self.game_mode = 1;
-            self.game_mode_state = 8;
-        }
 
         if self.render_playfield && pressed_input.get(Input::Start) && self.play_state != 10 {
             self.render_playfield = false;

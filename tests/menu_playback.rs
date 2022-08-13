@@ -1,4 +1,4 @@
-use meta_nestris::{movie::Movie, state::State};
+use meta_nestris::{game_mode::GameMode, movie::Movie, state::State};
 use std::{fs::read_dir, path::PathBuf};
 
 fn get_last_state(movie_filepath: &PathBuf) -> State {
@@ -11,7 +11,7 @@ fn get_last_state(movie_filepath: &PathBuf) -> State {
     return state;
 }
 
-fn reach_game_mode(directory: &str, target_game_mode: u8) {
+fn reach_game_mode(directory: &str, target_game_mode: GameMode) {
     let mut found_any_movie = false;
 
     for filepath in read_dir(directory).unwrap().map(|p| p.unwrap().path()) {
@@ -33,25 +33,25 @@ fn reach_game_mode(directory: &str, target_game_mode: u8) {
 
 #[test]
 fn reach_copyright() {
-    reach_game_mode(r"tests\movies\menus\copyright", 0);
+    reach_game_mode(r"tests\movies\menus\copyright", GameMode::CopyrightScreen);
 }
 
 #[test]
 fn reach_title() {
-    reach_game_mode(r"tests\movies\menus\title", 1);
+    reach_game_mode(r"tests\movies\menus\title", GameMode::TitleScreen);
 }
 
 #[test]
 fn reach_game_type() {
-    reach_game_mode(r"tests\movies\menus\game_type", 2);
+    reach_game_mode(r"tests\movies\menus\game_type", GameMode::GameTypeSelect);
 }
 
 #[test]
 fn reach_level_select() {
-    reach_game_mode(r"tests\movies\menus\level_select", 3);
+    reach_game_mode(r"tests\movies\menus\level_select", GameMode::LevelSelect);
 }
 
 #[test]
 fn reach_gameplay() {
-    reach_game_mode(r"tests\movies\menus\gameplay", 4);
+    reach_game_mode(r"tests\movies\menus\gameplay", GameMode::Gameplay);
 }
