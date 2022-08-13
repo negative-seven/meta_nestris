@@ -9,9 +9,7 @@ pub struct State {
     pub dead: bool,
     pub previous_input: Input,
     pub level: i8,
-    pub score: u8,
-    pub score_high: u8,
-    pub score_higher: u8,
+    pub score: [u8; 3],
     pub random: Random,
     pub tetrimino_x: u8,
     pub tetrimino_y: u8,
@@ -22,8 +20,7 @@ pub struct State {
     pub current_piece: Piece,
     pub next_piece: Piece,
     pub vram_row: u8,
-    pub lines: u8,
-    pub lines_high: u8,
+    pub lines: [u8; 2],
     pub play_state: PlayState,
     pub autorepeat_x: u8,
     pub playfield: [[bool; 10]; 27],
@@ -63,9 +60,7 @@ impl State {
             dead: false,
             previous_input: Input::new(),
             level: 0,
-            score: 0,
-            score_high: 0,
-            score_higher: 0,
+            score: [0; 3],
             frame_counter: 0,
             random: Random::new(),
             tetrimino_x: 0,
@@ -77,8 +72,7 @@ impl State {
             current_piece: Piece::TUp,
             next_piece: Piece::TUp,
             vram_row: 0,
-            lines: 0,
-            lines_high: 0,
+            lines: [0; 2],
             play_state: PlayState::MoveTetrimino,
             autorepeat_x: 0,
             playfield: [[false; 10]; 27],
@@ -342,17 +336,15 @@ impl State {
         self.tetrimino_y = 0;
         self.vram_row = 0;
         self.fall_timer = 0;
-        self.score = 0;
-        self.score_high = 0;
-        self.score_higher = 0;
-        self.lines = 0;
+        self.score = [0; 3];
+        self.lines[0] = 0;
         self.render_playfield = true;
         self.autorepeat_y = 0xa0;
         self.current_piece = self.random.next_piece();
         self.random.step();
         self.next_piece = self.random.next_piece();
         if self.game_type != 0 {
-            self.lines = 0x25;
+            self.lines[0] = 0x25;
         }
         if self.game_type == 0 {
             self.init_playfield_dummy = true;
@@ -482,35 +474,35 @@ impl State {
         }
 
         if self.game_type != 0 {
-            self.lines = u8::wrapping_sub(self.lines, self.completed_lines);
-            if self.lines >= 0x80 {
-                self.lines = 0;
+            self.lines[0] = u8::wrapping_sub(self.lines[0], self.completed_lines);
+            if self.lines[0] >= 0x80 {
+                self.lines[0] = 0;
                 self.add_hold_down_points();
                 return;
             }
 
-            if self.lines & 0xf < 0xa {
+            if self.lines[0] & 0xf < 0xa {
                 self.add_hold_down_points();
                 return;
             }
-            self.lines -= 6;
+            self.lines[0] -= 6;
             self.add_hold_down_points();
             return;
         }
 
         for _ in 0..self.completed_lines {
-            self.lines += 1;
-            if self.lines & 0xf >= 0xa {
-                self.lines += 6;
-                if self.lines & 0xf0 >= 0xa0 {
-                    self.lines &= 0xf;
-                    self.lines_high += 1;
+            self.lines[0] += 1;
+            if self.lines[0] & 0xf >= 0xa {
+                self.lines[0] += 6;
+                if self.lines[0] & 0xf0 >= 0xa0 {
+                    self.lines[0] &= 0xf;
+                    self.lines[1] += 1;
                 }
             }
 
-            if self.lines & 0xf == 0 {
-                let general_counter2 = self.lines_high;
-                let mut general_counter = self.lines;
+            if self.lines[0] & 0xf == 0 {
+                let general_counter2 = self.lines[1];
+                let mut general_counter = self.lines[0];
                 general_counter /= 16;
                 general_counter |= general_counter2 * 16;
                 if self.level_number < general_counter {
@@ -524,14 +516,14 @@ impl State {
     // is there a bug? this doesn't seem to update highest byte of score
     fn add_hold_down_points(&mut self) {
         if self.hold_down_points >= 2 {
-            self.score += self.hold_down_points - 1;
-            if self.score & 0xf >= 0xa {
-                self.score += 6;
+            self.score[0] += self.hold_down_points - 1;
+            if self.score[0] & 0xf >= 0xa {
+                self.score[0] += 6;
             }
 
-            if self.score & 0xf0 >= 0xa0 {
-                self.score = u8::wrapping_add(self.score & 0xf0, 0x60);
-                self.score_high += 1;
+            if self.score[0] & 0xf0 >= 0xa0 {
+                self.score[0] = u8::wrapping_add(self.score[0] & 0xf0, 0x60);
+                self.score[1] += 1;
             }
         }
         self.add_line_clear_points();
@@ -716,26 +708,24 @@ impl State {
     fn add_line_clear_points(&mut self) {
         self.hold_down_points = 0;
         for _ in 0..self.level_number + 1 {
-            self.score += (Self::POINTS_TABLE[self.completed_lines as usize] & 0xff) as u8;
-            if self.score >= 0xa0 {
-                self.score = u8::wrapping_add(self.score, 0x60);
-                self.score_high += 1;
+            self.score[0] += (Self::POINTS_TABLE[self.completed_lines as usize] & 0xff) as u8;
+            if self.score[0] >= 0xa0 {
+                self.score[0] = u8::wrapping_add(self.score[0], 0x60);
+                self.score[1] += 1;
             }
-            self.score_high += (Self::POINTS_TABLE[self.completed_lines as usize] >> 8) as u8;
-            if self.score_high & 0xf >= 0xa {
-                self.score_high += 6;
+            self.score[1] += (Self::POINTS_TABLE[self.completed_lines as usize] >> 8) as u8;
+            if self.score[1] & 0xf >= 0xa {
+                self.score[1] += 6;
             }
-            if self.score_high & 0xf0 >= 0xa0 {
-                self.score_high = u8::wrapping_add(self.score_high, 0x60);
-                self.score_higher += 1;
+            if self.score[1] & 0xf0 >= 0xa0 {
+                self.score[1] = u8::wrapping_add(self.score[1], 0x60);
+                self.score[2] += 1;
             }
-            if self.score_higher & 0xf >= 0xa {
-                self.score_higher += 6;
+            if self.score[2] & 0xf >= 0xa {
+                self.score[2] += 6;
             }
-            if self.score_higher & 0xf0 >= 0xa0 {
-                self.score = 0x99;
-                self.score_high = 0x99;
-                self.score_higher = 0x99;
+            if self.score[2] & 0xf0 >= 0xa0 {
+                self.score = [0x99; 3];
             }
         }
         self.completed_lines = 0;
