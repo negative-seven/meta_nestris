@@ -1,5 +1,5 @@
 use crate::{
-    game_mode::GameMode, game_mode_state::GameModeState, input::Input, menu_state::MenuState,
+    menu_mode::MenuMode, game_mode_state::GameModeState, input::Input, menu_state::MenuState,
     piece::Piece, play_state::PlayState, random::Random,
 };
 
@@ -26,7 +26,7 @@ pub struct GameplayState {
     pub playfield: [[bool; 10]; 27],
     pub level_number: u8,
     pub hold_down_points: u8,
-    pub game_mode: GameMode,
+    pub game_mode: MenuMode,
     pub line_index: u8,
     pub completed_lines: u8,
     pub game_type: u8,
@@ -78,7 +78,7 @@ impl GameplayState {
             playfield: [[false; 10]; 27],
             level_number: 0,
             hold_down_points: 0,
-            game_mode: GameMode::CopyrightScreen,
+            game_mode: MenuMode::CopyrightScreen,
             line_index: 0,
             completed_lines: 0,
             game_type: 0,
@@ -202,150 +202,7 @@ impl GameplayState {
     }
 
     fn branch_on_game_mode(&mut self, input: Input) -> bool {
-        match self.game_mode {
-            GameMode::CopyrightScreen => self.legal_screen(input),
-            GameMode::TitleScreen => {
-                self.title_screen(input);
-                true
-            }
-            GameMode::GameTypeSelect => {
-                self.game_type_menu(input);
-                true
-            }
-            GameMode::LevelSelect => {
-                self.level_menu(input);
-                true
-            }
-            GameMode::Gameplay => self.play_and_ending_high_score(input),
-        }
-    }
-
-    fn legal_screen(&mut self, input: Input) -> bool {
-        self.do_nmi = true;
-
-        let pressed_input = input.difference(self.previous_input);
-        if pressed_input != Input::Start && self.timeout_counter != 0 {
-            self.timeout_counter -= 1;
-            return true;
-        }
-
-        self.game_mode = GameMode::TitleScreen;
-        self.delay_timer = 5;
-        self.render_playfield = false;
-        true
-    }
-
-    fn title_screen(&mut self, input: Input) {
-        let pressed_input = input.difference(self.previous_input);
-        if pressed_input == Input::Start {
-            self.render_playfield = false;
-            self.game_mode = GameMode::GameTypeSelect;
-            self.delay_timer = 4;
-        }
-    }
-
-    fn game_type_menu(&mut self, input: Input) {
-        let pressed_input = input.difference(self.previous_input);
-        if pressed_input == Input::Right {
-            self.game_type = 1;
-        } else if pressed_input == Input::Left {
-            self.game_type = 0;
-        } else if pressed_input == Input::Start {
-            self.game_mode = GameMode::LevelSelect;
-            self.delay_timer = 5;
-            self.original_y = 0;
-            self.start_level %= 10;
-            self.render_playfield = false;
-            self.do_nmi = false;
-            for _ in 0..4 {
-                self.render();
-                self.random.step();
-            }
-        } else if pressed_input == Input::B {
-            self.game_mode = GameMode::TitleScreen;
-            self.delay_timer = 6;
-        }
-    }
-
-    fn level_menu(&mut self, input: Input) {
-        self.do_nmi = true;
-
-        self.selecting_level_or_height = self.original_y;
-        self.level_menu_handle_level_height_navigation(input);
-        self.original_y = self.selecting_level_or_height;
-
-        let pressed_input = input.difference(self.previous_input);
-        if pressed_input == Input::Start {
-            if input == Input::Start | Input::A {
-                self.start_level += 10;
-            }
-            self.game_mode_state = GameModeState::InitGameState;
-            self.game_mode = GameMode::Gameplay;
-            self.delay_timer = 4;
-        } else if pressed_input == Input::B {
-            self.delay_timer = 4;
-            self.game_mode = GameMode::GameTypeSelect;
-        } else {
-            self.random.choose_random_holes();
-        }
-    }
-
-    fn level_menu_handle_level_height_navigation(&mut self, input: Input) {
-        let pressed_input = input.difference(self.previous_input);
-
-        if pressed_input == Input::Right {
-            if self.selecting_level_or_height == 0 {
-                if self.start_level != 9 {
-                    self.start_level += 1;
-                }
-            } else {
-                if self.start_height != 5 {
-                    self.start_height += 1;
-                }
-            }
-        }
-
-        if pressed_input == Input::Left {
-            if self.selecting_level_or_height == 0 {
-                if self.start_level != 0 {
-                    self.start_level -= 1;
-                }
-            } else {
-                if self.start_height != 0 {
-                    self.start_height -= 1;
-                }
-            }
-        }
-
-        if pressed_input == Input::Down {
-            if self.selecting_level_or_height == 0 {
-                if self.start_level < 5 {
-                    self.start_level += 5;
-                }
-            } else {
-                if self.start_height < 3 {
-                    self.start_height += 3;
-                }
-            }
-        }
-
-        if pressed_input == Input::Up {
-            if self.selecting_level_or_height == 0 {
-                if self.start_level >= 5 {
-                    self.start_level -= 5;
-                }
-            } else {
-                if self.start_height >= 3 {
-                    self.start_height -= 3;
-                }
-            }
-        }
-
-        if self.game_type != 0 {
-            if pressed_input == Input::A {
-                self.selecting_level_or_height ^= 1;
-            }
-        }
+        self.play_and_ending_high_score(input)
     }
 
     fn play_and_ending_high_score(&mut self, input: Input) -> bool {
