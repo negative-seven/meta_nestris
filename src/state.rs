@@ -1,5 +1,6 @@
 use crate::{
-    game_mode::GameMode, game_mode_state::GameModeState, input::Input, piece::Piece, random::Random, play_state::PlayState,
+    game_mode::GameMode, game_mode_state::GameModeState, input::Input, piece::Piece,
+    play_state::PlayState, random::Random,
 };
 
 #[derive(Clone, Eq, PartialEq)]
@@ -260,13 +261,11 @@ impl State {
 
     fn title_screen(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
-        if pressed_input != Input::Start {
-            return;
+        if pressed_input == Input::Start {
+            self.render_playfield = false;
+            self.game_mode = GameMode::GameTypeSelect;
+            self.delay_timer = 4;
         }
-
-        self.render_playfield = false;
-        self.game_mode = GameMode::GameTypeSelect;
-        self.delay_timer = 4;
     }
 
     fn game_type_menu(&mut self, input: Input) {
@@ -286,11 +285,9 @@ impl State {
                 self.render();
                 self.random.step();
             }
-            return;
         } else if pressed_input == Input::B {
             self.game_mode = GameMode::TitleScreen;
             self.delay_timer = 6;
-            return;
         }
     }
 
@@ -309,16 +306,12 @@ impl State {
             self.game_mode_state = GameModeState::InitGameState;
             self.game_mode = GameMode::Gameplay;
             self.delay_timer = 4;
-            return;
-        }
-
-        if pressed_input == Input::B {
+        } else if pressed_input == Input::B {
             self.delay_timer = 4;
             self.game_mode = GameMode::GameTypeSelect;
-            return;
+        } else {
+            self.random.choose_random_holes();
         }
-
-        self.random.choose_random_holes();
     }
 
     fn level_menu_handle_level_height_navigation(&mut self, input: Input) {
@@ -441,14 +434,12 @@ impl State {
 
     fn pause_loop(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
-        if pressed_input != Input::Start {
-            return;
+        if pressed_input == Input::Start {
+            self.vram_row = 0;
+            self.render_playfield = true;
+            self.game_mode_state = GameModeState::Unpause;
+            self.paused = false;
         }
-
-        self.vram_row = 0;
-        self.render_playfield = true;
-        self.game_mode_state = GameModeState::Unpause;
-        self.paused = false;
     }
 
     fn branch_on_play_state_player1(&mut self, input: Input) {
@@ -543,15 +534,13 @@ impl State {
 
     fn increment_line_index(&mut self) {
         self.line_index += 1;
-        if self.line_index < 4 {
-            return;
-        }
-
-        self.vram_row = 0;
-        self.row_y = 0;
-        self.play_state = PlayState::DoNothing;
-        if self.completed_lines == 0 {
-            self.play_state = PlayState::UpdateLinesAndStatistics;
+        if self.line_index == 4 {
+            self.vram_row = 0;
+            self.row_y = 0;
+            self.play_state = PlayState::DoNothing;
+            if self.completed_lines == 0 {
+                self.play_state = PlayState::UpdateLinesAndStatistics;
+            }
         }
     }
 
@@ -603,18 +592,16 @@ impl State {
 
     // is there a bug? this doesn't seem to update highest byte of score
     fn add_hold_down_points(&mut self) {
-        if self.hold_down_points < 2 {
-            self.add_line_clear_points();
-            return;
-        }
-        self.score += self.hold_down_points - 1;
-        if self.score & 0xf >= 0xa {
-            self.score += 6;
-        }
+        if self.hold_down_points >= 2 {
+            self.score += self.hold_down_points - 1;
+            if self.score & 0xf >= 0xa {
+                self.score += 6;
+            }
 
-        if self.score & 0xf0 >= 0xa0 {
-            self.score = u8::wrapping_add(self.score & 0xf0, 0x60);
-            self.score_high += 1;
+            if self.score & 0xf0 >= 0xa0 {
+                self.score = u8::wrapping_add(self.score & 0xf0, 0x60);
+                self.score_high += 1;
+            }
         }
         self.add_line_clear_points();
     }
@@ -659,14 +646,12 @@ impl State {
                 self.tetrimino_x = original_y;
                 self.autorepeat_x = 16;
             }
-            return;
         } else if input.get(Input::Left) {
             self.tetrimino_x = u8::wrapping_sub(self.tetrimino_x, 1);
             if !self.is_position_valid() {
                 self.tetrimino_x = original_y;
                 self.autorepeat_x = 16;
             }
-            return;
         }
     }
 
@@ -708,13 +693,10 @@ impl State {
             if !self.is_position_valid() {
                 self.current_piece = original_y;
             }
-            return;
-        }
-        if pressed_input.get(Input::B) {
+        } else if pressed_input.get(Input::B) {
             self.current_piece = Self::ROTATION_TABLE[(self.current_piece as u8 * 2) as usize];
             if !self.is_position_valid() {
                 self.current_piece = original_y;
-                return;
             }
         }
     }
@@ -755,22 +737,22 @@ impl State {
             return;
         }
         self.autorepeat_y += 1;
-        if self.autorepeat_y < 3 {
+        if self.autorepeat_y >= 3 {
+            self.autorepeat_y = 1;
+            self.hold_down_points += 1;
+
+            self.fall_timer = 0;
+            let original_y = self.tetrimino_y;
+            self.tetrimino_y += 1;
+            if !self.is_position_valid() {
+                self.tetrimino_y = original_y;
+                self.play_state = PlayState::LockTetrimino;
+                self.update_playfield();
+            }
+        } else {
             self.lookup_drop_speed();
             return;
         }
-        self.autorepeat_y = 1;
-        self.hold_down_points += 1;
-
-        self.fall_timer = 0;
-        let original_y = self.tetrimino_y;
-        self.tetrimino_y += 1;
-        if self.is_position_valid() {
-            return;
-        }
-        self.tetrimino_y = original_y;
-        self.play_state = PlayState::LockTetrimino;
-        self.update_playfield();
     }
 
     fn lookup_drop_speed(&mut self) {
@@ -779,19 +761,16 @@ impl State {
         } else {
             1
         };
-        if self.fall_timer < frames_per_drop {
-            return;
+        if self.fall_timer >= frames_per_drop {
+            self.fall_timer = 0;
+            let original_y = self.tetrimino_y;
+            self.tetrimino_y += 1;
+            if !self.is_position_valid() {
+                self.tetrimino_y = original_y;
+                self.play_state = PlayState::LockTetrimino;
+                self.update_playfield();
+            }
         }
-
-        self.fall_timer = 0;
-        let original_y = self.tetrimino_y;
-        self.tetrimino_y += 1;
-        if self.is_position_valid() {
-            return;
-        }
-        self.tetrimino_y = original_y;
-        self.play_state = PlayState::LockTetrimino;
-        self.update_playfield();
     }
 
     fn update_playfield(&mut self) {
@@ -846,13 +825,11 @@ impl State {
             }
             self.vram_row = 0;
         } else {
-            if self.vram_row >= 21 {
-                return;
-            }
-
-            self.vram_row += 4;
-            if self.vram_row >= 20 {
-                self.vram_row = 32;
+            if self.vram_row < 21 {
+                self.vram_row += 4;
+                if self.vram_row >= 20 {
+                    self.vram_row = 32;
+                }
             }
         }
     }
