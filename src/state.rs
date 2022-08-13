@@ -176,9 +176,9 @@ impl State {
             self.timeout_counter = 0xff;
             for _ in 0..263 {
                 self.render();
-                self.frame_counter = (self.frame_counter + 1) % 4;
                 self.random.step();
             }
+            self.frame_counter = (self.frame_counter + 3) % 4;
             self.reset_complete = true;
         }
 
@@ -246,7 +246,7 @@ impl State {
         self.do_nmi = true;
 
         let pressed_input = input.difference(self.previous_input);
-        if pressed_input != 0x10 && self.timeout_counter != 0 {
+        if pressed_input != Input::Start && self.timeout_counter != 0 {
             self.timeout_counter -= 1;
             return true;
         }
@@ -283,7 +283,6 @@ impl State {
             self.do_nmi = false;
             for _ in 0..4 {
                 self.render();
-                self.frame_counter = (self.frame_counter + 1) % 4;
                 self.random.step();
             }
             return;
@@ -512,7 +511,7 @@ impl State {
     }
 
     fn check_for_completed_rows(&mut self) {
-        if self.vram_row < 0x20 {
+        if self.vram_row < 32 {
             return;
         }
 
@@ -630,7 +629,7 @@ impl State {
     }
 
     fn spawn_next_tetrimino(&mut self) {
-        if self.vram_row < 0x20 {
+        if self.vram_row < 32 {
             return;
         }
         self.fall_timer = 0;
@@ -863,15 +862,13 @@ impl State {
             }
             self.vram_row = 0;
         } else {
-            for _ in 0..4 {
-                if self.vram_row >= 0x15 {
-                    return;
-                }
+            if self.vram_row >= 21 {
+                return;
+            }
 
-                self.vram_row += 1;
-                if self.vram_row >= 0x14 {
-                    self.vram_row = 0x20;
-                }
+            self.vram_row += 4;
+            if self.vram_row >= 20 {
+                self.vram_row = 32;
             }
         }
     }
@@ -887,16 +884,15 @@ impl State {
     }
 
     fn generate_playfield(&mut self) {
-        for c in (1..13).rev() {
+        for general_counter2 in 8..20 {
             self.render();
             self.frame_counter = (self.frame_counter + 1) % 4;
             self.random.step();
 
-            let general_counter2 = 0x14 - c;
             self.vram_row = 0;
             for general_counter3 in (0..10).rev() {
                 self.random.step();
-                let general_counter4 = Self::RNG_TABLE[(self.random.get_value() & 7) as usize];
+                let general_counter4 = Self::RNG_TABLE[(self.random.get_value() % 8) as usize];
                 let x = general_counter2;
                 let y = x * 10 + general_counter3;
                 self.playfield[y as usize] = general_counter4;
@@ -904,12 +900,12 @@ impl State {
 
             loop {
                 self.random.step();
-                if self.random.get_value() & 0xf < 0xa {
+                if self.random.get_value() % 16 < 10 {
                     break;
                 }
             }
 
-            let general_counter5 = self.random.get_value() & 0xf;
+            let general_counter5 = self.random.get_value() % 16;
             let y = general_counter5 + general_counter2 * 10;
             self.playfield[y as usize] = false;
         }
