@@ -1,5 +1,7 @@
 use enum_primitive_derive::Primitive;
 use num_traits::ToPrimitive;
+use once_cell::sync::Lazy;
+use std::iter::once;
 
 #[derive(Clone, Copy, Eq, PartialEq, Primitive)]
 pub enum Piece {
@@ -25,6 +27,52 @@ pub enum Piece {
     None = 19,
 }
 
+static ROTATION_CYCLES: Lazy<[Vec<Piece>; 7]> = Lazy::new(|| {
+    [
+        vec![Piece::TUp, Piece::TRight, Piece::TDown, Piece::TLeft],
+        vec![Piece::JUp, Piece::JRight, Piece::JDown, Piece::JLeft],
+        vec![Piece::ZHorizontal, Piece::ZVertical],
+        vec![Piece::O],
+        vec![Piece::SHorizontal, Piece::SVertical],
+        vec![Piece::LUp, Piece::LRight, Piece::LDown, Piece::LLeft],
+        vec![Piece::IHorizontal, Piece::IVertical],
+    ]
+});
+
+static CLOCKWISE_ROTATIONS: Lazy<[Piece; 19]> = Lazy::new(|| {
+    let mut rotations = [Piece::None; 19];
+
+    let pairs = ROTATION_CYCLES.iter().flat_map(|cycle| {
+        cycle
+            .iter()
+            .zip(cycle.iter().skip(1).chain(once(cycle.first().unwrap())))
+    });
+
+    for (first, second) in pairs {
+        rotations[*first as usize] = *second;
+    }
+
+    rotations
+});
+
+static COUNTERCLOCKWISE_ROTATIONS: Lazy<[Piece; 19]> = Lazy::new(|| {
+    let mut rotations = [Piece::None; 19];
+
+    let pairs = ROTATION_CYCLES.iter().flat_map(|cycle| {
+        cycle
+            .iter()
+            .skip(1)
+            .chain(once(cycle.first().unwrap()))
+            .zip(cycle.iter())
+    });
+
+    for (first, second) in pairs {
+        rotations[*first as usize] = *second;
+    }
+
+    rotations
+});
+
 impl Piece {
     const TILE_OFFSETS: [[(i8, i8); 4]; 19] = [
         [(-1, 0), (0, 0), (1, 0), (0, -1)],
@@ -47,57 +95,17 @@ impl Piece {
         [(0, -2), (0, -1), (0, 0), (0, 1)],
         [(-2, 0), (-1, 0), (0, 0), (1, 0)],
     ];
-    const PIECE_ROTATIONS: [Piece; 38] = [
-        Piece::TLeft,
-        Piece::TRight,
-        Piece::TUp,
-        Piece::TDown,
-        Piece::TRight,
-        Piece::TLeft,
-        Piece::TDown,
-        Piece::TUp,
-        Piece::JLeft,
-        Piece::JRight,
-        Piece::JUp,
-        Piece::JDown,
-        Piece::JRight,
-        Piece::JLeft,
-        Piece::JDown,
-        Piece::JUp,
-        Piece::ZVertical,
-        Piece::ZVertical,
-        Piece::ZHorizontal,
-        Piece::ZHorizontal,
-        Piece::O,
-        Piece::O,
-        Piece::SVertical,
-        Piece::SVertical,
-        Piece::SHorizontal,
-        Piece::SHorizontal,
-        Piece::LLeft,
-        Piece::LRight,
-        Piece::LUp,
-        Piece::LDown,
-        Piece::LRight,
-        Piece::LLeft,
-        Piece::LDown,
-        Piece::LUp,
-        Piece::IHorizontal,
-        Piece::IHorizontal,
-        Piece::IVertical,
-        Piece::IVertical,
-    ];
 
     pub fn to_id(self) -> u8 {
         self.to_u8().unwrap()
     }
 
-    pub fn get_counterclockwise_rotation(self) -> Self {
-        Self::PIECE_ROTATIONS[self as usize * 2]
+    pub fn get_clockwise_rotation(self) -> Self {
+        CLOCKWISE_ROTATIONS[self as usize]
     }
 
-    pub fn get_clockwise_rotation(self) -> Self {
-        Self::PIECE_ROTATIONS[self as usize * 2 + 1]
+    pub fn get_counterclockwise_rotation(self) -> Self {
+        COUNTERCLOCKWISE_ROTATIONS[self as usize]
     }
 
     pub fn get_tile_offsets(self) -> &'static [(i8, i8); 4] {
