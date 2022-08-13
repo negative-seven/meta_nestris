@@ -22,6 +22,7 @@ pub enum Piece {
     LLeft = 16,
     IVertical = 17,
     IHorizontal = 18,
+    None = 19,
 }
 
 impl Piece {

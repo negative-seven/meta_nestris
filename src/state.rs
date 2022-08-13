@@ -16,8 +16,8 @@ pub struct State {
     pub game_mode_state: u8,
     pub render_playfield: bool,
     pub autorepeat_y: u8,
-    pub current_piece: u8,
-    pub next_piece: u8,
+    pub current_piece: Piece,
+    pub next_piece: Piece,
     pub vram_row: u8,
     pub lines: u8,
     pub lines_high: u8,
@@ -111,27 +111,6 @@ impl State {
         48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
         2, 1,
     ];
-    const SPAWN_ORIENTATION_FROM_ORIENTATION: [Piece; 19] = [
-        Piece::TDown,
-        Piece::TDown,
-        Piece::TDown,
-        Piece::TDown,
-        Piece::JLeft,
-        Piece::JLeft,
-        Piece::JLeft,
-        Piece::JLeft,
-        Piece::ZHorizontal,
-        Piece::ZHorizontal,
-        Piece::O,
-        Piece::SHorizontal,
-        Piece::SHorizontal,
-        Piece::LRight,
-        Piece::LRight,
-        Piece::LRight,
-        Piece::LRight,
-        Piece::IHorizontal,
-        Piece::IHorizontal,
-    ];
     const POINTS_TABLE: [u16; 5] = [0x0, 0x40, 0x100, 0x300, 0x1200];
     const TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE: [u8; 6] = [200, 170, 150, 120, 100, 80];
     const RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
@@ -153,8 +132,8 @@ impl State {
             fall_timer: 0,
             render_playfield: false,
             autorepeat_y: 0,
-            current_piece: 0,
-            next_piece: 0,
+            current_piece: Piece::TUp,
+            next_piece: Piece::TUp,
             vram_row: 0,
             lines: 0,
             lines_high: 0,
@@ -442,9 +421,9 @@ impl State {
         self.lines = 0;
         self.render_playfield = true;
         self.autorepeat_y = 0xa0;
-        self.current_piece = self.choose_next_tetrimino();
+        self.current_piece = self.random.next_piece();
         self.random.step();
-        self.next_piece = self.choose_next_tetrimino();
+        self.next_piece = self.random.next_piece();
         if self.game_type != 0 {
             self.lines = 0x25;
         }
@@ -454,11 +433,6 @@ impl State {
             self.do_nmi = false;
             self.init_playfield = true;
         }
-    }
-
-    fn choose_next_tetrimino(&mut self) -> u8 {
-        let piece = self.random.next_piece();
-        return piece as u8;
     }
 
     fn start_button_handling(&mut self, input: Input) {
@@ -573,7 +547,7 @@ impl State {
             self.playfield[y] = false;
         }
 
-        self.current_piece = 0x13;
+        self.current_piece = Piece::None;
         self.increment_line_index();
     }
 
@@ -663,9 +637,8 @@ impl State {
         self.tetrimino_y = 0;
         self.play_state = 1;
         self.tetrimino_x = 5;
-        self.current_piece =
-            Self::SPAWN_ORIENTATION_FROM_ORIENTATION[self.next_piece as usize] as u8;
-        self.next_piece = self.choose_next_tetrimino();
+        self.current_piece = self.next_piece;
+        self.next_piece = self.random.next_piece();
         self.autorepeat_y = 0;
     }
 
@@ -726,9 +699,8 @@ impl State {
                 i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0] * 8)
                     + general_counter4
                     + center_tile_offset;
-            let y =
-                (i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1])
-                    + selecting_level_or_height);
+            let y = i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1])
+                + selecting_level_or_height;
             if self.playfield[y as u8 as usize] {
                 return false;
             }
@@ -749,14 +721,14 @@ impl State {
         let original_y = self.current_piece;
         let pressed_input = input.difference(self.previous_input);
         if pressed_input.get(Input::A) {
-            self.current_piece = Self::ROTATION_TABLE[(self.current_piece * 2 + 1) as usize] as u8;
+            self.current_piece = Self::ROTATION_TABLE[(self.current_piece as u8 * 2 + 1) as usize];
             if !self.is_position_valid() {
                 self.current_piece = original_y;
             }
             return;
         }
         if pressed_input.get(Input::B) {
-            self.current_piece = Self::ROTATION_TABLE[(self.current_piece * 2) as usize] as u8;
+            self.current_piece = Self::ROTATION_TABLE[(self.current_piece as u8 * 2) as usize];
             if !self.is_position_valid() {
                 self.current_piece = original_y;
                 return;
