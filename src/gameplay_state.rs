@@ -4,7 +4,7 @@ use crate::{
 };
 
 #[derive(Clone, Eq, PartialEq)]
-pub struct State {
+pub struct GameplayState {
     pub do_nmi: bool,
     pub dead: bool,
     pub previous_input: Input,
@@ -45,7 +45,7 @@ pub struct State {
     pub reset_complete: bool,
 }
 
-impl State {
+impl GameplayState {
     const FRAMES_PER_DROP_TABLE: [u8; 30] = [
         48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
         2, 1,
