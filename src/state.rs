@@ -1,4 +1,6 @@
-use crate::{game_mode::GameMode, input::Input, piece::Piece, random::Random};
+use crate::{
+    game_mode::GameMode, game_mode_state::GameModeState, input::Input, piece::Piece, random::Random,
+};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct State {
@@ -13,7 +15,7 @@ pub struct State {
     pub tetrimino_x: u8,
     pub tetrimino_y: u8,
     pub fall_timer: u8,
-    pub game_mode_state: u8,
+    pub game_mode_state: GameModeState,
     pub render_playfield: bool,
     pub autorepeat_y: u8,
     pub current_piece: Piece,
@@ -128,7 +130,7 @@ impl State {
             random: Random::new(),
             tetrimino_x: 0,
             tetrimino_y: 0,
-            game_mode_state: 0,
+            game_mode_state: GameModeState::InitGameState,
             fall_timer: 0,
             render_playfield: false,
             autorepeat_y: 0,
@@ -200,12 +202,12 @@ impl State {
             }
         } else if self.init_playfield {
             self.init_playfield_for_type_b();
-            self.game_mode_state = 2;
+            self.game_mode_state = GameModeState::HandleGameplay;
             self.previous_input = input.clone();
             return;
         } else if self.init_playfield_dummy {
             self.init_playfield_dummy = false;
-            self.game_mode_state = 2;
+            self.game_mode_state = GameModeState::HandleGameplay;
         }
 
         loop {
@@ -304,7 +306,7 @@ impl State {
             if input == Input::Start | Input::A {
                 self.start_level += 10;
             }
-            self.game_mode_state = 0;
+            self.game_mode_state = GameModeState::InitGameState;
             self.game_mode = GameMode::Gameplay;
             self.delay_timer = 4;
             return;
@@ -379,30 +381,25 @@ impl State {
 
     fn play_and_ending_high_score(&mut self, input: Input) -> bool {
         match self.game_mode_state {
-            0 => {
-                self.game_mode_state = 1;
-                false
-            }
-            1 => {
+            GameModeState::InitGameState => {
                 self.init_game_state();
                 false
             }
-            2 => {
+            GameModeState::HandleGameplay => {
                 self.fall_timer += 1;
                 self.branch_on_play_state_player1(input);
-                self.game_mode_state = 7;
-                input == self.game_mode_state
+                self.game_mode_state = GameModeState::HandleStartButton;
+                input == Input::Right | Input::Left | Input::Down
             }
-            7 => {
+            GameModeState::HandleStartButton => {
                 self.start_button_handling(input);
-                self.game_mode_state = 2;
+                self.game_mode_state = GameModeState::HandleGameplay;
                 true
             }
-            8 => {
-                self.game_mode_state = 2;
+            GameModeState::Unpause => {
+                self.game_mode_state = GameModeState::HandleGameplay;
                 true
             }
-            _ => panic!("invalid game mode state"),
         }
     }
 
@@ -450,7 +447,7 @@ impl State {
 
         self.vram_row = 0;
         self.render_playfield = true;
-        self.game_mode_state = 8;
+        self.game_mode_state = GameModeState::Unpause;
         self.paused = false;
     }
 
