@@ -230,8 +230,13 @@ impl State {
         }
 
         loop {
-            let a = self.branch_on_game_mode(input);
-            if self.dead || self.init_playfield || self.init_playfield_dummy || a || self.paused {
+            let force_end_loop = self.branch_on_game_mode(input);
+            if force_end_loop
+                || self.dead
+                || self.init_playfield
+                || self.init_playfield_dummy
+                || self.paused
+            {
                 self.previous_input = input.clone();
                 return;
             }
@@ -512,28 +517,19 @@ impl State {
         }
 
         if self.vram_row >= 32 {
-            let mut general_counter = self.tetrimino_y * 2;
-            let carry = if general_counter as u16 + (self.tetrimino_y * 8) as u16 >= 0x100 {
-                1
-            } else {
-                0
-            };
-            general_counter += (self.tetrimino_y * 8) + self.tetrimino_x + carry;
+            let center_tile_offset = self.tetrimino_y * 10 + self.tetrimino_x; // assumption: self.tetrimino_y < 26, resulting in no carry
 
-            for x2 in 0..4 {
-                let general_counter4 = u8::wrapping_mul(
-                    Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0],
-                    2,
+            for tile_index in 0..4 {
+                let additional_offset_y_component = u8::wrapping_mul(
+                    Self::ORIENTATION_TABLE[self.current_piece as usize][tile_index as usize][0],
+                    10,
                 );
-                let selecting_level_or_height = u8::wrapping_add(
-                    general_counter4,
-                    u8::wrapping_add(u8::wrapping_mul(general_counter4, 4), general_counter),
-                );
-                let y = u8::wrapping_add(
-                    Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1],
-                    selecting_level_or_height,
-                );
-                self.playfield[y as usize] = true;
+                let additional_offset_x_component =
+                    Self::ORIENTATION_TABLE[self.current_piece as usize][tile_index as usize][1];
+                let additional_offset =
+                    u8::wrapping_add(additional_offset_x_component, additional_offset_y_component);
+                self.playfield[u8::wrapping_add(center_tile_offset, additional_offset) as usize] =
+                    true;
             }
 
             self.line_index = 0;
@@ -552,18 +548,14 @@ impl State {
         } else {
             self.tetrimino_y - 2
         } + self.line_index;
+        let general_counter = general_counter2 * 10;
 
-        let mut general_counter = general_counter2 * 2;
-        general_counter += general_counter2 * 8;
-        let mut y = general_counter;
-
-        for _ in 0..10 {
-            if !self.playfield[y as usize] {
+        for index in general_counter..general_counter + 10 {
+            if !self.playfield[index as usize] {
                 self.completed_row[self.line_index as usize] = 0;
                 self.increment_line_index();
                 return;
             }
-            y += 1;
         }
 
         self.completed_lines += 1;
@@ -717,8 +709,7 @@ impl State {
     }
 
     fn is_position_valid(&mut self) -> bool {
-        let mut general_counter = self.tetrimino_y * 2;
-        general_counter += u8::wrapping_add(self.tetrimino_y * 8, self.tetrimino_x);
+        let center_tile_offset = u8::wrapping_add(self.tetrimino_y * 10, self.tetrimino_x);
 
         for x2 in 0..4 {
             if u8::wrapping_add(
@@ -738,7 +729,7 @@ impl State {
                     Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0],
                     8,
                 ),
-                u8::wrapping_add(general_counter4, general_counter),
+                u8::wrapping_add(general_counter4, center_tile_offset),
             );
             let y = u8::wrapping_add(
                 Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1],
@@ -762,18 +753,16 @@ impl State {
 
     fn rotate_tetrimino(&mut self, input: Input) {
         let original_y = self.current_piece;
-        let mut x = self.current_piece * 2;
         let pressed_input = input.difference(self.previous_input);
         if pressed_input.get(Input::A) {
-            x += 1;
-            self.current_piece = Self::ROTATION_TABLE[x as usize] as u8;
+            self.current_piece = Self::ROTATION_TABLE[(self.current_piece * 2 + 1) as usize] as u8;
             if !self.is_position_valid() {
                 self.current_piece = original_y;
             }
             return;
         }
         if pressed_input.get(Input::B) {
-            self.current_piece = Self::ROTATION_TABLE[x as usize] as u8;
+            self.current_piece = Self::ROTATION_TABLE[(self.current_piece * 2) as usize] as u8;
             if !self.is_position_valid() {
                 self.current_piece = original_y;
                 return;
@@ -782,9 +771,9 @@ impl State {
     }
 
     fn drop_tetrimino(&mut self, input: Input) {
-        let new_input = input.difference(self.previous_input);
+        let pressed_input = input.difference(self.previous_input);
         if self.autorepeat_y >= 0x80 {
-            if !new_input.get(Input::Down) {
+            if !pressed_input.get(Input::Down) {
                 self.autorepeat_y = u8::wrapping_add(self.autorepeat_y, 1);
                 return;
             }
@@ -795,10 +784,10 @@ impl State {
                 self.lookup_drop_speed();
                 return;
             }
-            if new_input.get(Input::Down)
-                && !new_input.get(Input::Left)
-                && !new_input.get(Input::Right)
-                && !new_input.get(Input::Up)
+            if pressed_input.get(Input::Down)
+                && !pressed_input.get(Input::Left)
+                && !pressed_input.get(Input::Right)
+                && !pressed_input.get(Input::Up)
             {
                 self.autorepeat_y = 1;
             }
@@ -836,12 +825,12 @@ impl State {
     }
 
     fn lookup_drop_speed(&mut self) {
-        let mut a = 1;
-        let x = self.level_number;
-        if x < 0x1d {
-            a = Self::FRAMES_PER_DROP_TABLE[x as usize];
-        }
-        if self.fall_timer < a {
+        let frames_per_drop = if self.level_number < 0x1d {
+            Self::FRAMES_PER_DROP_TABLE[self.level_number as usize]
+        } else {
+            1
+        };
+        if self.fall_timer < frames_per_drop {
             return;
         }
 
@@ -857,13 +846,12 @@ impl State {
     }
 
     fn update_playfield(&mut self) {
-        let mut a = u8::wrapping_sub(self.tetrimino_y, 2);
-        if a >= 0x80 {
-            a = 0;
-        }
-        if a < self.vram_row {
-            self.vram_row = a;
-        }
+        let highest_row_to_update = if self.tetrimino_y >= 2 {
+            self.tetrimino_y - 2
+        } else {
+            0
+        };
+        self.vram_row = u8::min(self.vram_row, highest_row_to_update);
     }
 
     fn add_line_clear_points(&mut self) {
