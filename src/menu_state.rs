@@ -1,10 +1,10 @@
 use crate::{
-    game_mode::GameMode, game_mode_state::GameModeState, input::Input, menu_state::MenuState,
-    piece::Piece, play_state::PlayState, random::Random,
+    game_mode::GameMode, game_mode_state::GameModeState, gameplay_state::GameplayState,
+    input::Input, piece::Piece, play_state::PlayState, random::Random,
 };
 
 #[derive(Clone, Eq, PartialEq)]
-pub struct GameplayState {
+pub struct MenuState {
     pub do_nmi: bool,
     pub dead: bool,
     pub previous_input: Input,
@@ -45,7 +45,7 @@ pub struct GameplayState {
     pub reset_complete: bool,
 }
 
-impl GameplayState {
+impl MenuState {
     const FRAMES_PER_DROP_TABLE: [u8; 30] = [
         48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
         2, 1,
@@ -97,52 +97,9 @@ impl GameplayState {
         }
     }
 
-    pub fn from_menu_state(menu_state: &MenuState) -> Self {
-        Self {
-            do_nmi: menu_state.do_nmi,
-            dead: menu_state.dead,
-            previous_input: menu_state.previous_input,
-            level: menu_state.level,
-            score: menu_state.score,
-            random: menu_state.random.clone(),
-            tetrimino_x: menu_state.tetrimino_x,
-            tetrimino_y: menu_state.tetrimino_y,
-            fall_timer: menu_state.fall_timer,
-            game_mode_state: menu_state.game_mode_state,
-            render_playfield: menu_state.render_playfield,
-            autorepeat_y: menu_state.autorepeat_y,
-            current_piece: menu_state.current_piece,
-            next_piece: menu_state.next_piece,
-            vram_row: menu_state.vram_row,
-            lines: menu_state.lines,
-            play_state: menu_state.play_state,
-            autorepeat_x: menu_state.autorepeat_x,
-            playfield: menu_state.playfield,
-            level_number: menu_state.level_number,
-            hold_down_points: menu_state.hold_down_points,
-            game_mode: menu_state.game_mode,
-            line_index: menu_state.line_index,
-            completed_lines: menu_state.completed_lines,
-            game_type: menu_state.game_type,
-            completed_row: menu_state.completed_row,
-            row_y: menu_state.row_y,
-            frame_counter: menu_state.frame_counter,
-            start_level: menu_state.start_level,
-            original_y: menu_state.original_y,
-            selecting_level_or_height: menu_state.selecting_level_or_height,
-            start_height: menu_state.start_height,
-            paused: menu_state.paused,
-            init_playfield: menu_state.init_playfield,
-            init_playfield_dummy: menu_state.init_playfield_dummy,
-            timeout_counter: menu_state.timeout_counter,
-            delay_timer: menu_state.delay_timer,
-            reset_complete: menu_state.reset_complete,
-        }
-    }
-
-    pub fn step(&mut self, input: Input) {
+    pub fn step(&mut self, input: Input) -> Option<GameplayState> {
         if self.dead {
-            return;
+            return None;
         }
 
         if self.do_nmi {
@@ -167,7 +124,7 @@ impl GameplayState {
                 self.do_nmi = true;
             } else {
                 self.previous_input = input.clone();
-                return;
+                return None;
             }
         }
 
@@ -175,13 +132,13 @@ impl GameplayState {
             self.pause_loop(input);
             if self.paused {
                 self.previous_input = input.clone();
-                return;
+                return None;
             }
         } else if self.init_playfield {
             self.init_playfield_for_type_b();
             self.game_mode_state = GameModeState::HandleGameplay;
             self.previous_input = input.clone();
-            return;
+            return None;
         } else if self.init_playfield_dummy {
             self.init_playfield_dummy = false;
             self.game_mode_state = GameModeState::HandleGameplay;
@@ -196,7 +153,12 @@ impl GameplayState {
                 || self.paused
             {
                 self.previous_input = input.clone();
-                return;
+
+                return if self.game_mode == GameMode::Gameplay {
+                    Some(GameplayState::from_menu_state(self))
+                } else {
+                    None
+                };
             }
         }
     }

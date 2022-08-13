@@ -1,4 +1,4 @@
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Copy, Eq, PartialEq)]
 pub enum PlayState {
     MoveTetrimino = 1,
     LockTetrimino = 2,

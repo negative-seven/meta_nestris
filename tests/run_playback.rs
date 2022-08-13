@@ -27,22 +27,28 @@ fn a_type_max_score_playback() {
 
         let (next_to_last_state, last_state) = get_last_two_states(&filepath);
 
-        assert!(
-            !(next_to_last_state.score[0] == 0x99
-                && next_to_last_state.score[1] == 0x99
-                && next_to_last_state.score[2] == 0x99),
-            "{}: maximum score reached before last state",
-            filepath.display()
-        );
+        match next_to_last_state {
+            State::MenuState(_) => panic!("next to last state is a menu state"),
+            State::GameplayState(state) => assert!(
+                !(state.score[0] == 0x99 && state.score[1] == 0x99 && state.score[2] == 0x99),
+                "{}: maximum score reached before last state",
+                filepath.display()
+            ),
+        }
 
-        let score = ((last_state.score[2] as u32) << 16)
-            | ((last_state.score[1] as u32) << 8)
-            | last_state.score[0] as u32;
-        assert!(
-            score == 0x999999,
-            "{}: maximum score not reached in last state",
-            filepath.display()
-        );
+        match last_state {
+            State::MenuState(_) => panic!("last state is a menu state"),
+            State::GameplayState(state) => {
+                let score = ((state.score[2] as u32) << 16)
+                    | ((state.score[1] as u32) << 8)
+                    | state.score[0] as u32;
+                assert!(
+                    score == 0x999999,
+                    "{}: maximum score not reached in last state",
+                    filepath.display()
+                );
+            }
+        }
     }
 
     if !found_any_movie {
@@ -62,17 +68,23 @@ fn b_type_clear_playback() {
 
         let (next_to_last_state, last_state) = get_last_two_states(&filepath);
 
-        assert!(
-            next_to_last_state.lines[0] != 0,
-            "{}: 0 lines reached before last state",
-            filepath.display()
-        );
+        match next_to_last_state {
+            State::MenuState(_) => panic!("next to last state is a menu state"),
+            State::GameplayState(state) => assert!(
+                state.lines[0] != 0,
+                "{}: 0 lines reached before last state",
+                filepath.display()
+            ),
+        }
 
-        assert!(
-            last_state.lines[0] == 0,
-            "{}: 0 lines not reached in last state",
-            filepath.display()
-        );
+        match last_state {
+            State::MenuState(_) => panic!("last state is a menu state"),
+            State::GameplayState(state) => assert!(
+                state.lines[0] == 0,
+                "{}: 0 lines not reached in last state",
+                filepath.display()
+            ),
+        };
     }
 
     if !found_any_movie {
@@ -92,17 +104,21 @@ fn death_playback() {
 
         let (next_to_last_state, last_state) = get_last_two_states(&filepath);
 
-        assert!(
-            !next_to_last_state.dead,
-            "{}: dead before last state",
-            filepath.display()
-        );
+        match next_to_last_state {
+            State::MenuState(_) => panic!("next to last state is a menu state"),
+            State::GameplayState(state) => assert!(
+                !state.dead,
+                "{}: dead before last state",
+                filepath.display()
+            ),
+        }
 
-        assert!(
-            last_state.dead,
-            "{}: not dead in last state",
-            filepath.display()
-        );
+        match last_state {
+            State::MenuState(_) => panic!("last state is a menu state"),
+            State::GameplayState(state) => {
+                assert!(state.dead, "{}: not dead in last state", filepath.display())
+            }
+        }
     }
 
     if !found_any_movie {

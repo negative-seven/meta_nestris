@@ -18,12 +18,25 @@ fn reach_game_mode(directory: &str, target_game_mode: GameMode) {
         found_any_movie = true;
 
         let state = get_last_state(&filepath);
-        assert!(
-            state.game_mode == target_game_mode,
-            "{}: game mode = {}",
-            filepath.display(),
-            state.game_mode
-        );
+        match state {
+            State::MenuState(state) => {
+                if target_game_mode == GameMode::Gameplay {
+                    panic!("last state is a menu state");
+                } else {
+                    assert!(
+                        state.game_mode == target_game_mode,
+                        "{}: game mode = {}",
+                        filepath.display(),
+                        state.game_mode
+                    );
+                }
+            }
+            State::GameplayState(_) => {
+                if target_game_mode != GameMode::Gameplay {
+                    panic!("last state is a gameplay state");
+                }
+            }
+        }
     }
 
     if !found_any_movie {
