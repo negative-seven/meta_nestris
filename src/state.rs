@@ -23,7 +23,7 @@ pub struct State {
     pub lines_high: u8,
     pub play_state: u8,
     pub autorepeat_x: u8,
-    pub playfield: [bool; 0x110],
+    pub playfield: [[bool; 10]; 27],
     pub level_number: u8,
     pub hold_down_points: u8,
     pub game_mode: u8,
@@ -112,7 +112,7 @@ impl State {
         2, 1,
     ];
     const POINTS_TABLE: [u16; 5] = [0x0, 0x40, 0x100, 0x300, 0x1200];
-    const TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE: [u8; 6] = [200, 170, 150, 120, 100, 80];
+    const TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE: [u8; 6] = [20, 17, 15, 12, 10, 8];
     const RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
 
     pub fn new() -> Self {
@@ -139,7 +139,7 @@ impl State {
             lines_high: 0,
             play_state: 0,
             autorepeat_x: 0,
-            playfield: [false; 0x110],
+            playfield: [[false; 10]; 27],
             level_number: 0,
             hold_down_points: 0,
             game_mode: 0,
@@ -490,18 +490,19 @@ impl State {
         }
 
         if self.vram_row >= 32 {
-            let center_tile_offset = self.tetrimino_y * 10 + self.tetrimino_x; // assumption: self.tetrimino_y < 26, resulting in no carry
-
             for tile_index in 0..4 {
-                let additional_offset_y_component = Self::ORIENTATION_TABLE
-                    [self.current_piece as usize][tile_index as usize][0]
-                    * 10;
-                let additional_offset_x_component =
-                    Self::ORIENTATION_TABLE[self.current_piece as usize][tile_index as usize][1];
-                let additional_offset =
-                    additional_offset_x_component + additional_offset_y_component;
-                self.playfield[u8::wrapping_add(center_tile_offset, additional_offset as u8) as u8
-                    as usize] = true;
+                let x = i16::from(self.tetrimino_x)
+                    + i16::from(
+                        Self::ORIENTATION_TABLE[self.current_piece as usize][tile_index as usize]
+                            [1],
+                    );
+                let y = i16::from(self.tetrimino_y)
+                    + i16::from(
+                        Self::ORIENTATION_TABLE[self.current_piece as usize][tile_index as usize]
+                            [0],
+                    );
+                let offset = (y * 10 + x) as u8;
+                self.playfield[(offset / 10) as usize][(offset % 10) as usize] = true;
             }
 
             self.line_index = 0;
@@ -522,8 +523,8 @@ impl State {
         } + self.line_index;
         let general_counter = general_counter2 * 10;
 
-        for index in general_counter..general_counter + 10 {
-            if !self.playfield[index as usize] {
+        for x in 0..10 {
+            if !self.playfield[general_counter2 as usize][x as usize] {
                 self.completed_row[self.line_index as usize] = 0;
                 self.increment_line_index();
                 return;
@@ -535,15 +536,16 @@ impl State {
 
         let mut y = u8::wrapping_sub(general_counter, 1);
         loop {
-            self.playfield[y as usize + 10] = self.playfield[y as usize];
+            self.playfield[(y / 10 + 1) as usize][(y % 10) as usize] =
+                self.playfield[(y / 10) as usize][(y % 10) as usize];
             if y == 0 {
                 break;
             }
             y = u8::wrapping_sub(y, 1);
         }
 
-        for y in 0..10 {
-            self.playfield[y] = false;
+        for x in 0..10 {
+            self.playfield[0][x] = false;
         }
 
         self.current_piece = Piece::None;
@@ -680,27 +682,20 @@ impl State {
     }
 
     fn is_position_valid(&mut self) -> bool {
-        let center_tile_offset =
-            i16::from(u8::wrapping_add(self.tetrimino_y * 10, self.tetrimino_x));
-
         for x2 in 0..4 {
             if i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0])
                 + i16::from(self.tetrimino_y)
-                + 2
-                >= 0x16
+                >= 20
             {
                 return false;
             }
 
-            let general_counter4 =
-                i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0] * 2);
-            let selecting_level_or_height =
-                i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0] * 8)
-                    + general_counter4
-                    + center_tile_offset;
             let y = i16::from(Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][1])
-                + selecting_level_or_height;
-            if self.playfield[y as u8 as usize] {
+                + i16::from(
+                    Self::ORIENTATION_TABLE[self.current_piece as usize][x2 as usize][0] * 10,
+                )
+                + i16::from(u8::wrapping_add(self.tetrimino_y * 10, self.tetrimino_x));
+            if self.playfield[(y as u8 / 10) as usize][(y as u8 % 10) as usize] {
                 return false;
             }
 
@@ -893,9 +888,8 @@ impl State {
             for general_counter3 in (0..10).rev() {
                 self.random.step();
                 let general_counter4 = Self::RNG_TABLE[(self.random.get_value() % 8) as usize];
-                let x = general_counter2;
-                let y = x * 10 + general_counter3;
-                self.playfield[y as usize] = general_counter4;
+                self.playfield[general_counter2 as usize][general_counter3 as usize] =
+                    general_counter4;
             }
 
             loop {
@@ -907,11 +901,16 @@ impl State {
 
             let general_counter5 = self.random.get_value() % 16;
             let y = general_counter5 + general_counter2 * 10;
-            self.playfield[y as usize] = false;
+            self.playfield[(y / 10) as usize][(y % 10) as usize] = false;
         }
 
-        for y in 0..=Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
-            self.playfield[y as usize] = false;
+        for y in 0..Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
+            for x in 0..10 {
+                self.playfield[y as usize][x as usize] = false;
+            }
         }
+        self.playfield
+            [Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] as usize]
+            [0] = false; // behavior from the base game: leftmost tile of top row is always empty
     }
 }
