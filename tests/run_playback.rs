@@ -71,7 +71,7 @@ fn b_type_clear_playback() {
         match next_to_last_state {
             State::MenuState(_) => panic!("next to last state is a menu state"),
             State::GameplayState(state) => assert!(
-                state.lines[0] != 0,
+                state.lines != 0,
                 "{}: 0 lines reached before last state",
                 filepath.display()
             ),
@@ -80,7 +80,7 @@ fn b_type_clear_playback() {
         match last_state {
             State::MenuState(_) => panic!("last state is a menu state"),
             State::GameplayState(state) => assert!(
-                state.lines[0] == 0,
+                state.lines == 0,
                 "{}: 0 lines not reached in last state",
                 filepath.display()
             ),

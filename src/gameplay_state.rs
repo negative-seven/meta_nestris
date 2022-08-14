@@ -19,7 +19,7 @@ pub struct GameplayState {
     pub current_piece: Piece,
     pub next_piece: Piece,
     pub vram_row: u8,
-    pub lines: [u8; 2],
+    pub lines: u16,
     pub play_state: PlayState,
     pub autorepeat_x: u8,
     pub playfield: [[bool; 10]; 27],
@@ -57,8 +57,8 @@ impl GameplayState {
             next_piece: menu_state.next_piece,
             vram_row: 0,
             lines: match menu_state.game_type {
-                GameType::A => [0, 0],
-                GameType::B => [0x25, 0],
+                GameType::A => 0,
+                GameType::B => 25,
             },
             play_state: PlayState::MoveTetrimino,
             autorepeat_x: 0,
@@ -240,38 +240,23 @@ impl GameplayState {
         }
 
         if self.game_type == GameType::B {
-            self.lines[0] = u8::wrapping_sub(self.lines[0], self.completed_lines);
-            if self.lines[0] >= 0x80 {
-                self.lines[0] = 0;
-                self.add_hold_down_points();
-                return;
-            }
-
-            if self.lines[0] & 0xf < 0xa {
-                self.add_hold_down_points();
-                return;
-            }
-            self.lines[0] -= 6;
+            self.lines = if self.lines > u16::from(self.completed_lines) {
+                self.lines - u16::from(self.completed_lines)
+            } else {
+                0
+            };
             self.add_hold_down_points();
             return;
         }
 
         for _ in 0..self.completed_lines {
-            self.lines[0] += 1;
-            if self.lines[0] & 0xf >= 0xa {
-                self.lines[0] += 6;
-                if self.lines[0] & 0xf0 >= 0xa0 {
-                    self.lines[0] &= 0xf;
-                    self.lines[1] += 1;
-                }
-            }
+            self.lines += 1;
+            self.lines %= 10000;
 
-            if self.lines[0] & 0xf == 0 {
-                let general_counter2 = self.lines[1];
-                let mut general_counter = self.lines[0];
-                general_counter /= 16;
-                general_counter |= general_counter2 * 16;
-                if self.level_number < general_counter {
+            if self.lines % 10 == 0 {
+                let lines_middle_digits = (self.lines / 10) as u8 % 100;
+                let target_level = lines_middle_digits + 6 * (lines_middle_digits / 10);
+                if self.level_number < target_level {
                     self.level_number += 1;
                 }
             }
