@@ -8,7 +8,7 @@ pub struct MenuState {
     pub do_nmi: bool,
     pub previous_input: Input,
     pub random: Random,
-    pub game_mode: MenuMode,
+    pub menu_mode: MenuMode,
     pub game_type: GameType,
     pub frame_counter: u8,
     pub start_level: u8,
@@ -38,7 +38,7 @@ impl MenuState {
             previous_input: Input::new(),
             frame_counter: 3,
             random,
-            game_mode: MenuMode::CopyrightScreen,
+            menu_mode: MenuMode::CopyrightScreen,
             game_type: GameType::A,
             start_level: 0,
             selecting_level_or_height: 0,
@@ -87,7 +87,7 @@ impl MenuState {
     }
 
     fn branch_on_game_mode(&mut self, input: Input) {
-        match self.game_mode {
+        match self.menu_mode {
             MenuMode::CopyrightScreen => self.legal_screen(input),
             MenuMode::TitleScreen => self.title_screen(input),
             MenuMode::GameTypeSelect => self.game_type_menu(input),
@@ -105,14 +105,14 @@ impl MenuState {
             return;
         }
 
-        self.game_mode = MenuMode::TitleScreen;
+        self.menu_mode = MenuMode::TitleScreen;
         self.delay_timer = 5;
     }
 
     fn title_screen(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
         if pressed_input == Input::Start {
-            self.game_mode = MenuMode::GameTypeSelect;
+            self.menu_mode = MenuMode::GameTypeSelect;
             self.delay_timer = 4;
         }
     }
@@ -124,7 +124,7 @@ impl MenuState {
         } else if pressed_input == Input::Left {
             self.game_type = GameType::A;
         } else if pressed_input == Input::Start {
-            self.game_mode = MenuMode::LevelSelect;
+            self.menu_mode = MenuMode::LevelSelect;
             self.delay_timer = 5;
             self.selecting_level_or_height = 0;
             self.start_level %= 10;
@@ -133,7 +133,7 @@ impl MenuState {
                 self.random.step();
             }
         } else if pressed_input == Input::B {
-            self.game_mode = MenuMode::TitleScreen;
+            self.menu_mode = MenuMode::TitleScreen;
             self.delay_timer = 6;
         }
     }
@@ -149,10 +149,10 @@ impl MenuState {
                 self.start_level += 10;
             }
             self.delay_timer = 3;
-            self.game_mode = MenuMode::InitializingGame;
+            self.menu_mode = MenuMode::InitializingGame;
         } else if pressed_input == Input::B {
             self.delay_timer = 4;
-            self.game_mode = MenuMode::GameTypeSelect;
+            self.menu_mode = MenuMode::GameTypeSelect;
         } else {
             self.random.choose_random_holes();
         }

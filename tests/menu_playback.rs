@@ -11,7 +11,7 @@ fn get_last_state(movie_filepath: &PathBuf) -> State {
     return state;
 }
 
-fn reach_game_mode(directory: &str, target_game_mode: MenuMode) {
+fn reach_game_mode(directory: &str, target_menu_mode: MenuMode) {
     let mut found_any_movie = false;
 
     for filepath in read_dir(directory).unwrap().map(|p| p.unwrap().path()) {
@@ -21,10 +21,10 @@ fn reach_game_mode(directory: &str, target_game_mode: MenuMode) {
         match state {
             State::MenuState(state) => {
                 assert!(
-                    state.game_mode == target_game_mode,
+                    state.menu_mode == target_menu_mode,
                     "{}: game mode = {}",
                     filepath.display(),
-                    state.game_mode
+                    state.menu_mode
                 );
             }
             State::GameplayState(_) => {
