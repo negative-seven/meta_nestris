@@ -31,12 +31,7 @@ pub struct GameplayState {
     pub completed_row: [u8; 4],
     pub row_y: u8,
     pub frame_counter: u8,
-    pub original_y: u8,
-    pub start_height: u8,
     pub paused: bool,
-    pub init_playfield: bool,
-    pub init_playfield_dummy: bool,
-    pub delay_timer: u16,
 }
 
 impl GameplayState {
@@ -45,8 +40,6 @@ impl GameplayState {
         2, 1,
     ];
     const POINTS_TABLE: [u16; 5] = [0x0, 0x40, 0x100, 0x300, 0x1200];
-    const TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE: [u8; 6] = [20, 17, 15, 12, 10, 8];
-    const RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
 
     pub fn new(start_level: u8) -> Self {
         Self {
@@ -58,7 +51,7 @@ impl GameplayState {
             random: Random::new(),
             tetrimino_x: 5,
             tetrimino_y: 0,
-            game_mode_state: GameModeState::InitGameState,
+            game_mode_state: GameModeState::HandleGameplay,
             fall_timer: 0,
             render_playfield: true,
             autorepeat_y: 0xa0,
@@ -76,12 +69,7 @@ impl GameplayState {
             game_type: 0,
             completed_row: [0; 4],
             row_y: 0,
-            original_y: 0,
-            start_height: 0,
             paused: false,
-            init_playfield: false,
-            init_playfield_dummy: false,
-            delay_timer: 268,
         }
     }
 
@@ -95,16 +83,20 @@ impl GameplayState {
             tetrimino_x: 5,
             tetrimino_y: 0,
             fall_timer: 0,
-            game_mode_state: GameModeState::InitGameState,
+            game_mode_state: GameModeState::HandleGameplay,
             render_playfield: true,
             autorepeat_y: 0xa0,
-            current_piece: Piece::TUp,
-            next_piece: Piece::TUp,
-            vram_row: 0,
-            lines: if menu_state.game_type == 0 { [0, 0] } else { [0x25, 0] },
+            current_piece: menu_state.current_piece,
+            next_piece: menu_state.next_piece,
+            vram_row: menu_state.vram_row,
+            lines: if menu_state.game_type == 0 {
+                [0, 0]
+            } else {
+                [0x25, 0]
+            },
             play_state: PlayState::MoveTetrimino,
             autorepeat_x: 0,
-            playfield: [[false; 10]; 27],
+            playfield: menu_state.playfield,
             level_number: menu_state.start_level,
             hold_down_points: 0,
             line_index: 0,
@@ -113,12 +105,7 @@ impl GameplayState {
             completed_row: [0; 4],
             row_y: 0,
             frame_counter: menu_state.frame_counter,
-            original_y: menu_state.original_y,
-            start_height: menu_state.start_height,
             paused: false,
-            init_playfield: false,
-            init_playfield_dummy: false,
-            delay_timer: menu_state.delay_timer,
         }
     }
 
@@ -133,40 +120,17 @@ impl GameplayState {
             self.random.step();
         }
 
-        if self.delay_timer > 0 {
-            self.delay_timer -= 1;
-            if self.delay_timer == 0 {
-                self.do_nmi = true;
-            } else {
-                self.previous_input = input.clone();
-                return;
-            }
-        }
-
         if self.paused {
             self.pause_loop(input);
             if self.paused {
                 self.previous_input = input.clone();
                 return;
             }
-        } else if self.init_playfield {
-            self.init_playfield_for_type_b();
-            self.game_mode_state = GameModeState::HandleGameplay;
-            self.previous_input = input.clone();
-            return;
-        } else if self.init_playfield_dummy {
-            self.init_playfield_dummy = false;
-            self.game_mode_state = GameModeState::HandleGameplay;
         }
 
         loop {
             let force_end_loop = self.play_and_ending_high_score(input);
-            if force_end_loop
-                || self.dead
-                || self.init_playfield
-                || self.init_playfield_dummy
-                || self.paused
-            {
+            if force_end_loop || self.dead || self.paused {
                 self.previous_input = input.clone();
                 return;
             }
@@ -175,10 +139,6 @@ impl GameplayState {
 
     fn play_and_ending_high_score(&mut self, input: Input) -> bool {
         match self.game_mode_state {
-            GameModeState::InitGameState => {
-                self.init_game_state();
-                false
-            }
             GameModeState::HandleGameplay => {
                 self.fall_timer += 1;
                 self.branch_on_play_state_player1(input);
@@ -194,18 +154,6 @@ impl GameplayState {
                 self.game_mode_state = GameModeState::HandleGameplay;
                 true
             }
-        }
-    }
-
-    fn init_game_state(&mut self) {
-        self.current_piece = self.random.next_piece();
-        self.random.step();
-        self.next_piece = self.random.next_piece();
-        if self.game_type == 0 {
-            self.init_playfield_dummy = true;
-        } else {
-            self.do_nmi = false;
-            self.init_playfield = true;
         }
     }
 
@@ -599,51 +547,5 @@ impl GameplayState {
                 }
             }
         }
-    }
-
-    fn init_playfield_for_type_b(&mut self) {
-        self.generate_playfield();
-        self.render();
-        self.frame_counter = (self.frame_counter + 1) % 4;
-        self.random.step();
-
-        self.delay_timer = 12;
-        self.init_playfield = false;
-    }
-
-    fn generate_playfield(&mut self) {
-        for general_counter2 in 8..20 {
-            self.render();
-            self.frame_counter = (self.frame_counter + 1) % 4;
-            self.random.step();
-
-            self.vram_row = 0;
-            for general_counter3 in (0..10).rev() {
-                self.random.step();
-                let general_counter4 = Self::RNG_TABLE[(self.random.get_value() % 8) as usize];
-                self.playfield[general_counter2 as usize][general_counter3 as usize] =
-                    general_counter4;
-            }
-
-            loop {
-                self.random.step();
-                if self.random.get_value() % 16 < 10 {
-                    break;
-                }
-            }
-
-            let general_counter5 = self.random.get_value() % 16;
-            let y = general_counter5 + general_counter2 * 10;
-            self.playfield[(y / 10) as usize][(y % 10) as usize] = false;
-        }
-
-        for y in 0..Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
-            for x in 0..10 {
-                self.playfield[y as usize][x as usize] = false;
-            }
-        }
-        self.playfield
-            [Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] as usize]
-            [0] = false; // behavior from the base game: leftmost tile of top row is always empty
     }
 }

@@ -1,4 +1,6 @@
-use crate::{gameplay_state::GameplayState, input::Input, menu_mode::MenuMode, random::Random};
+use crate::{
+    gameplay_state::GameplayState, input::Input, menu_mode::MenuMode, piece::Piece, random::Random,
+};
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct MenuState {
@@ -16,9 +18,17 @@ pub struct MenuState {
     pub delay_timer: u16,
     pub reset_complete: bool,
     pub to_gameplay_state: bool,
+    pub init_playfield: bool,
+    pub current_piece: Piece,
+    pub next_piece: Piece,
+    pub vram_row: u8,
+    pub playfield: [[bool; 10]; 27],
 }
 
 impl MenuState {
+    const TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE: [u8; 6] = [20, 17, 15, 12, 10, 8];
+    const RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
+
     pub fn new() -> Self {
         Self {
             do_nmi: false,
@@ -35,6 +45,11 @@ impl MenuState {
             delay_timer: 268,
             reset_complete: false,
             to_gameplay_state: false,
+            init_playfield: false,
+            current_piece: Piece::TUp,
+            next_piece: Piece::TUp,
+            vram_row: 0,
+            playfield: [[false; 10]; 27],
         }
     }
 
@@ -61,14 +76,21 @@ impl MenuState {
             }
         }
 
+        if self.init_playfield {
+            self.init_playfield_for_type_b();
+            self.init_playfield = false;
+            self.previous_input = input.clone();
+            return None;
+        }
+
+        if self.to_gameplay_state {
+            return Some(GameplayState::from_menu_state(self));
+        }
+
         self.branch_on_game_mode(input);
         self.previous_input = input.clone();
 
-        return if self.to_gameplay_state {
-            Some(GameplayState::from_menu_state(self))
-        } else {
-            None
-        };
+        None
     }
 
     fn branch_on_game_mode(&mut self, input: Input) {
@@ -77,6 +99,7 @@ impl MenuState {
             MenuMode::TitleScreen => self.title_screen(input),
             MenuMode::GameTypeSelect => self.game_type_menu(input),
             MenuMode::LevelSelect => self.level_menu(input),
+            MenuMode::InitializingGame => self.init_game_state(),
         }
     }
 
@@ -134,8 +157,8 @@ impl MenuState {
             if input == Input::Start | Input::A {
                 self.start_level += 10;
             }
-            self.to_gameplay_state = true;
-            self.delay_timer = 4;
+            self.delay_timer = 3;
+            self.game_mode = MenuMode::InitializingGame;
         } else if pressed_input == Input::B {
             self.delay_timer = 4;
             self.game_mode = MenuMode::GameTypeSelect;
@@ -198,6 +221,67 @@ impl MenuState {
         if self.game_type != 0 {
             if pressed_input == Input::A {
                 self.selecting_level_or_height ^= 1;
+            }
+        }
+    }
+
+    fn init_game_state(&mut self) {
+        self.frame_counter = (self.frame_counter + 1) % 4;
+        self.random.step();
+        self.current_piece = self.random.next_piece();
+        self.random.step();
+        self.next_piece = self.random.next_piece();
+        if self.game_type == 0 {
+            self.delay_timer = 1;
+        } else {
+            self.init_playfield = true;
+        }
+        self.do_nmi = false;
+        self.to_gameplay_state = true;
+    }
+
+    fn init_playfield_for_type_b(&mut self) {
+        for general_counter2 in 8..20 {
+            self.render();
+            self.frame_counter = (self.frame_counter + 1) % 4;
+            self.random.step();
+
+            self.vram_row = 0;
+            for general_counter3 in (0..10).rev() {
+                self.random.step();
+                let general_counter4 = Self::RNG_TABLE[(self.random.get_value() % 8) as usize];
+                self.playfield[general_counter2 as usize][general_counter3 as usize] =
+                    general_counter4;
+            }
+
+            loop {
+                self.random.step();
+                if self.random.get_value() % 16 < 10 {
+                    break;
+                }
+            }
+
+            let general_counter5 = self.random.get_value() % 16;
+            let y = general_counter5 + general_counter2 * 10;
+            self.playfield[(y / 10) as usize][(y % 10) as usize] = false;
+        }
+
+        for y in 0..Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
+            for x in 0..10 {
+                self.playfield[y as usize][x as usize] = false;
+            }
+        }
+        self.playfield
+            [Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] as usize]
+            [0] = false; // behavior from the base game: leftmost tile of top row is always empty
+        self.delay_timer = 12;
+    }
+
+    fn render(&mut self) {
+        if self.vram_row < 21 {
+            self.vram_row += 4;
+            if self.vram_row >= 20 {
+                self.vram_row = 32;
             }
         }
     }
