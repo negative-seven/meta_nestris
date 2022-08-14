@@ -28,7 +28,6 @@ pub struct GameplayState {
     pub line_index: u8,
     pub completed_lines: u8,
     pub game_type: u8,
-    pub completed_row: [u8; 4],
     pub row_y: u8,
     pub frame_counter: u8,
     pub paused: bool,
@@ -40,38 +39,6 @@ impl GameplayState {
         2, 1,
     ];
     const POINTS_TABLE: [u16; 5] = [0x0, 0x40, 0x100, 0x300, 0x1200];
-
-    pub fn new(start_level: u8) -> Self {
-        Self {
-            do_nmi: false,
-            dead: false,
-            previous_input: Input::new(),
-            score: [0; 3],
-            frame_counter: 0,
-            random: Random::new(),
-            tetrimino_x: 5,
-            tetrimino_y: 0,
-            game_mode_state: GameModeState::HandleGameplay,
-            fall_timer: 0,
-            render_playfield: true,
-            autorepeat_y: 0xa0,
-            current_piece: Piece::TUp,
-            next_piece: Piece::TUp,
-            vram_row: 0,
-            lines: [0; 2],
-            play_state: PlayState::MoveTetrimino,
-            autorepeat_x: 0,
-            playfield: [[false; 10]; 27],
-            level_number: start_level,
-            hold_down_points: 0,
-            line_index: 0,
-            completed_lines: 0,
-            game_type: 0,
-            completed_row: [0; 4],
-            row_y: 0,
-            paused: false,
-        }
-    }
 
     pub fn from_menu_state(menu_state: &MenuState) -> Self {
         Self {
@@ -88,7 +55,7 @@ impl GameplayState {
             autorepeat_y: 0xa0,
             current_piece: menu_state.current_piece,
             next_piece: menu_state.next_piece,
-            vram_row: menu_state.vram_row,
+            vram_row: 0,
             lines: if menu_state.game_type == 0 {
                 [0, 0]
             } else {
@@ -102,7 +69,6 @@ impl GameplayState {
             line_index: 0,
             completed_lines: 0,
             game_type: menu_state.game_type,
-            completed_row: [0; 4],
             row_y: 0,
             frame_counter: menu_state.frame_counter,
             paused: false,
@@ -231,14 +197,12 @@ impl GameplayState {
 
         for x in 0..10 {
             if !self.playfield[general_counter2 as usize][x as usize] {
-                self.completed_row[self.line_index as usize] = 0;
                 self.increment_line_index();
                 return;
             }
         }
 
         self.completed_lines += 1;
-        self.completed_row[self.line_index as usize] = general_counter2;
 
         let mut y = u8::wrapping_sub(general_counter, 1);
         loop {
