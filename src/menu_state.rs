@@ -23,7 +23,7 @@ impl MenuState {
         Self {
             do_nmi: false,
             previous_input: Input::new(),
-            frame_counter: 0,
+            frame_counter: 3,
             random: Random::new(),
             game_mode: MenuMode::CopyrightScreen,
             game_type: 0,
@@ -31,7 +31,7 @@ impl MenuState {
             original_y: 0,
             selecting_level_or_height: 0,
             start_height: 0,
-            timeout_counter: 0,
+            timeout_counter: 0xff,
             delay_timer: 268,
             reset_complete: false,
             to_gameplay_state: false,
@@ -45,11 +45,9 @@ impl MenuState {
         }
 
         if !self.reset_complete {
-            self.timeout_counter = 0xff;
             for _ in 0..263 {
                 self.random.step();
             }
-            self.frame_counter = (self.frame_counter + 3) % 4;
             self.reset_complete = true;
         }
 
@@ -63,50 +61,36 @@ impl MenuState {
             }
         }
 
-        loop {
-            let force_end_loop = self.branch_on_game_mode(input);
-            if force_end_loop {
-                self.previous_input = input.clone();
+        self.branch_on_game_mode(input);
+        self.previous_input = input.clone();
 
-                return if self.to_gameplay_state {
-                    Some(GameplayState::from_menu_state(self))
-                } else {
-                    None
-                };
-            }
-        }
+        return if self.to_gameplay_state {
+            Some(GameplayState::from_menu_state(self))
+        } else {
+            None
+        };
     }
 
-    fn branch_on_game_mode(&mut self, input: Input) -> bool {
+    fn branch_on_game_mode(&mut self, input: Input) {
         match self.game_mode {
             MenuMode::CopyrightScreen => self.legal_screen(input),
-            MenuMode::TitleScreen => {
-                self.title_screen(input);
-                true
-            }
-            MenuMode::GameTypeSelect => {
-                self.game_type_menu(input);
-                true
-            }
-            MenuMode::LevelSelect => {
-                self.level_menu(input);
-                true
-            }
+            MenuMode::TitleScreen => self.title_screen(input),
+            MenuMode::GameTypeSelect => self.game_type_menu(input),
+            MenuMode::LevelSelect => self.level_menu(input),
         }
     }
 
-    fn legal_screen(&mut self, input: Input) -> bool {
+    fn legal_screen(&mut self, input: Input) {
         self.do_nmi = true;
 
         let pressed_input = input.difference(self.previous_input);
         if pressed_input != Input::Start && self.timeout_counter != 0 {
             self.timeout_counter -= 1;
-            return true;
+            return;
         }
 
         self.game_mode = MenuMode::TitleScreen;
         self.delay_timer = 5;
-        true
     }
 
     fn title_screen(&mut self, input: Input) {

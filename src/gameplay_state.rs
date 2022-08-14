@@ -31,7 +31,6 @@ pub struct GameplayState {
     pub completed_row: [u8; 4],
     pub row_y: u8,
     pub frame_counter: u8,
-    pub start_level: u8,
     pub original_y: u8,
     pub start_height: u8,
     pub paused: bool,
@@ -49,7 +48,7 @@ impl GameplayState {
     const TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE: [u8; 6] = [20, 17, 15, 12, 10, 8];
     const RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
 
-    pub fn new() -> Self {
+    pub fn new(start_level: u8) -> Self {
         Self {
             do_nmi: false,
             dead: false,
@@ -57,12 +56,12 @@ impl GameplayState {
             score: [0; 3],
             frame_counter: 0,
             random: Random::new(),
-            tetrimino_x: 0,
+            tetrimino_x: 5,
             tetrimino_y: 0,
             game_mode_state: GameModeState::InitGameState,
             fall_timer: 0,
-            render_playfield: false,
-            autorepeat_y: 0,
+            render_playfield: true,
+            autorepeat_y: 0xa0,
             current_piece: Piece::TUp,
             next_piece: Piece::TUp,
             vram_row: 0,
@@ -70,14 +69,13 @@ impl GameplayState {
             play_state: PlayState::MoveTetrimino,
             autorepeat_x: 0,
             playfield: [[false; 10]; 27],
-            level_number: 0,
+            level_number: start_level,
             hold_down_points: 0,
             line_index: 0,
             completed_lines: 0,
             game_type: 0,
             completed_row: [0; 4],
             row_y: 0,
-            start_level: 0,
             original_y: 0,
             start_height: 0,
             paused: false,
@@ -94,20 +92,20 @@ impl GameplayState {
             previous_input: menu_state.previous_input,
             score: [0; 3],
             random: menu_state.random.clone(),
-            tetrimino_x: 0,
+            tetrimino_x: 5,
             tetrimino_y: 0,
             fall_timer: 0,
             game_mode_state: GameModeState::InitGameState,
-            render_playfield: false,
-            autorepeat_y: 0,
+            render_playfield: true,
+            autorepeat_y: 0xa0,
             current_piece: Piece::TUp,
             next_piece: Piece::TUp,
             vram_row: 0,
-            lines: [0; 2],
+            lines: if menu_state.game_type == 0 { [0, 0] } else { [0x25, 0] },
             play_state: PlayState::MoveTetrimino,
             autorepeat_x: 0,
             playfield: [[false; 10]; 27],
-            level_number: 0,
+            level_number: menu_state.start_level,
             hold_down_points: 0,
             line_index: 0,
             completed_lines: 0,
@@ -115,7 +113,6 @@ impl GameplayState {
             completed_row: [0; 4],
             row_y: 0,
             frame_counter: menu_state.frame_counter,
-            start_level: menu_state.start_level,
             original_y: menu_state.original_y,
             start_height: menu_state.start_height,
             paused: false,
@@ -163,7 +160,7 @@ impl GameplayState {
         }
 
         loop {
-            let force_end_loop = self.branch_on_game_mode(input);
+            let force_end_loop = self.play_and_ending_high_score(input);
             if force_end_loop
                 || self.dead
                 || self.init_playfield
@@ -174,10 +171,6 @@ impl GameplayState {
                 return;
             }
         }
-    }
-
-    fn branch_on_game_mode(&mut self, input: Input) -> bool {
-        self.play_and_ending_high_score(input)
     }
 
     fn play_and_ending_high_score(&mut self, input: Input) -> bool {
@@ -205,22 +198,9 @@ impl GameplayState {
     }
 
     fn init_game_state(&mut self) {
-        self.play_state = PlayState::MoveTetrimino;
-        self.level_number = self.start_level;
-        self.tetrimino_x = 5;
-        self.tetrimino_y = 0;
-        self.vram_row = 0;
-        self.fall_timer = 0;
-        self.score = [0; 3];
-        self.lines[0] = 0;
-        self.render_playfield = true;
-        self.autorepeat_y = 0xa0;
         self.current_piece = self.random.next_piece();
         self.random.step();
         self.next_piece = self.random.next_piece();
-        if self.game_type != 0 {
-            self.lines[0] = 0x25;
-        }
         if self.game_type == 0 {
             self.init_playfield_dummy = true;
         } else {
