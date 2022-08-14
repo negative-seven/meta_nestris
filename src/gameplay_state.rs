@@ -1,6 +1,6 @@
 use crate::{
-    game_mode_state::GameModeState, input::Input, menu_state::MenuState, piece::Piece,
-    play_state::PlayState, random::Random,
+    game_mode_state::GameModeState, game_type::GameType, input::Input, menu_state::MenuState,
+    piece::Piece, play_state::PlayState, random::Random,
 };
 
 #[derive(Clone, Eq, PartialEq)]
@@ -27,7 +27,7 @@ pub struct GameplayState {
     pub hold_down_points: u8,
     pub line_index: u8,
     pub completed_lines: u8,
-    pub game_type: u8,
+    pub game_type: GameType,
     pub row_y: u8,
     pub frame_counter: u8,
     pub paused: bool,
@@ -56,10 +56,9 @@ impl GameplayState {
             current_piece: menu_state.current_piece,
             next_piece: menu_state.next_piece,
             vram_row: 0,
-            lines: if menu_state.game_type == 0 {
-                [0, 0]
-            } else {
-                [0x25, 0]
+            lines: match menu_state.game_type {
+                GameType::A => [0, 0],
+                GameType::B => [0x25, 0],
             },
             play_state: PlayState::MoveTetrimino,
             autorepeat_x: 0,
@@ -240,7 +239,7 @@ impl GameplayState {
             return;
         }
 
-        if self.game_type != 0 {
+        if self.game_type == GameType::B {
             self.lines[0] = u8::wrapping_sub(self.lines[0], self.completed_lines);
             if self.lines[0] >= 0x80 {
                 self.lines[0] = 0;

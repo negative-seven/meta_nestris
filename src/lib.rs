@@ -5,6 +5,7 @@ pub mod menu_state;
 pub mod movie;
 pub mod state;
 
+mod game_type;
 mod game_mode_state;
 mod piece;
 mod play_state;

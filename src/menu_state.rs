@@ -1,5 +1,6 @@
 use crate::{
-    gameplay_state::GameplayState, input::Input, menu_mode::MenuMode, piece::Piece, random::Random,
+    game_type::GameType, gameplay_state::GameplayState, input::Input, menu_mode::MenuMode,
+    piece::Piece, random::Random,
 };
 
 #[derive(Clone, Eq, PartialEq)]
@@ -8,7 +9,7 @@ pub struct MenuState {
     pub previous_input: Input,
     pub random: Random,
     pub game_mode: MenuMode,
-    pub game_type: u8,
+    pub game_type: GameType,
     pub frame_counter: u8,
     pub start_level: u8,
     pub selecting_level_or_height: u8,
@@ -38,7 +39,7 @@ impl MenuState {
             frame_counter: 3,
             random,
             game_mode: MenuMode::CopyrightScreen,
-            game_type: 0,
+            game_type: GameType::A,
             start_level: 0,
             selecting_level_or_height: 0,
             start_height: 0,
@@ -119,9 +120,9 @@ impl MenuState {
     fn game_type_menu(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
         if pressed_input == Input::Right {
-            self.game_type = 1;
+            self.game_type = GameType::B;
         } else if pressed_input == Input::Left {
-            self.game_type = 0;
+            self.game_type = GameType::A;
         } else if pressed_input == Input::Start {
             self.game_mode = MenuMode::LevelSelect;
             self.delay_timer = 5;
@@ -208,7 +209,7 @@ impl MenuState {
             }
         }
 
-        if self.game_type != 0 {
+        if self.game_type == GameType::B {
             if pressed_input == Input::A {
                 self.selecting_level_or_height ^= 1;
             }
@@ -221,10 +222,13 @@ impl MenuState {
         self.current_piece = self.random.next_piece();
         self.random.step();
         self.next_piece = self.random.next_piece();
-        if self.game_type == 0 {
-            self.delay_timer = 1;
-        } else {
-            self.init_playfield = true;
+        match self.game_type {
+            GameType::A => {
+                self.delay_timer = 1;
+            }
+            GameType::B => {
+                self.init_playfield = true;
+            }
         }
         self.do_nmi = false;
         self.to_gameplay_state = true;
