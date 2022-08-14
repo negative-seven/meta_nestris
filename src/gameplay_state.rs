@@ -1,6 +1,6 @@
 use crate::{
-    game_mode_state::GameModeState, input::Input, menu_mode::MenuMode, menu_state::MenuState,
-    piece::Piece, play_state::PlayState, random::Random,
+    game_mode_state::GameModeState, input::Input, menu_state::MenuState, piece::Piece,
+    play_state::PlayState, random::Random,
 };
 
 #[derive(Clone, Eq, PartialEq)]
@@ -8,7 +8,6 @@ pub struct GameplayState {
     pub do_nmi: bool,
     pub dead: bool,
     pub previous_input: Input,
-    pub level: i8,
     pub score: [u8; 3],
     pub random: Random,
     pub tetrimino_x: u8,
@@ -26,7 +25,6 @@ pub struct GameplayState {
     pub playfield: [[bool; 10]; 27],
     pub level_number: u8,
     pub hold_down_points: u8,
-    pub game_mode: MenuMode,
     pub line_index: u8,
     pub completed_lines: u8,
     pub game_type: u8,
@@ -35,14 +33,11 @@ pub struct GameplayState {
     pub frame_counter: u8,
     pub start_level: u8,
     pub original_y: u8,
-    pub selecting_level_or_height: u8,
     pub start_height: u8,
     pub paused: bool,
     pub init_playfield: bool,
     pub init_playfield_dummy: bool,
-    pub timeout_counter: u8,
     pub delay_timer: u16,
-    pub reset_complete: bool,
 }
 
 impl GameplayState {
@@ -59,7 +54,6 @@ impl GameplayState {
             do_nmi: false,
             dead: false,
             previous_input: Input::new(),
-            level: 0,
             score: [0; 3],
             frame_counter: 0,
             random: Random::new(),
@@ -78,7 +72,6 @@ impl GameplayState {
             playfield: [[false; 10]; 27],
             level_number: 0,
             hold_down_points: 0,
-            game_mode: MenuMode::CopyrightScreen,
             line_index: 0,
             completed_lines: 0,
             game_type: 0,
@@ -86,14 +79,11 @@ impl GameplayState {
             row_y: 0,
             start_level: 0,
             original_y: 0,
-            selecting_level_or_height: 0,
             start_height: 0,
             paused: false,
             init_playfield: false,
             init_playfield_dummy: false,
-            timeout_counter: 0,
             delay_timer: 268,
-            reset_complete: false,
         }
     }
 
@@ -102,7 +92,6 @@ impl GameplayState {
             do_nmi: menu_state.do_nmi,
             dead: false,
             previous_input: menu_state.previous_input,
-            level: 0,
             score: [0; 3],
             random: menu_state.random.clone(),
             tetrimino_x: 0,
@@ -120,7 +109,6 @@ impl GameplayState {
             playfield: [[false; 10]; 27],
             level_number: 0,
             hold_down_points: 0,
-            game_mode: menu_state.game_mode,
             line_index: 0,
             completed_lines: 0,
             game_type: menu_state.game_type,
@@ -129,14 +117,11 @@ impl GameplayState {
             frame_counter: menu_state.frame_counter,
             start_level: menu_state.start_level,
             original_y: menu_state.original_y,
-            selecting_level_or_height: menu_state.selecting_level_or_height,
             start_height: menu_state.start_height,
             paused: false,
             init_playfield: false,
             init_playfield_dummy: false,
-            timeout_counter: menu_state.timeout_counter,
             delay_timer: menu_state.delay_timer,
-            reset_complete: menu_state.reset_complete,
         }
     }
 
@@ -149,16 +134,6 @@ impl GameplayState {
             self.render();
             self.frame_counter = (self.frame_counter + 1) % 4;
             self.random.step();
-        }
-
-        if !self.reset_complete {
-            self.timeout_counter = 0xff;
-            for _ in 0..263 {
-                self.render();
-                self.random.step();
-            }
-            self.frame_counter = (self.frame_counter + 3) % 4;
-            self.reset_complete = true;
         }
 
         if self.delay_timer > 0 {
