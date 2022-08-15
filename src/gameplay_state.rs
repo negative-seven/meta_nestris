@@ -11,11 +11,11 @@ pub struct GameplayState {
     pub previous_input: Input,
     pub score: u32,
     pub random: Random,
-    pub tetrimino_x: u8,
-    pub tetrimino_y: u8,
+    pub tetrimino_x: i8,
+    pub tetrimino_y: i8,
     pub fall_timer: u8,
     pub game_mode_state: GameModeState,
-    pub autorepeat_y: u8,
+    pub autorepeat_y: i8,
     pub current_piece: Piece,
     pub next_piece: Piece,
     pub vram_row: u8,
@@ -51,7 +51,7 @@ impl GameplayState {
             tetrimino_y: 0,
             fall_timer: 0,
             game_mode_state: GameModeState::HandleGameplay,
-            autorepeat_y: 0xa0,
+            autorepeat_y: -96,
             current_piece: menu_state.current_piece,
             next_piece: menu_state.next_piece,
             vram_row: 0,
@@ -195,7 +195,7 @@ impl GameplayState {
         let general_counter2 = if self.tetrimino_y < 2 {
             0
         } else {
-            self.tetrimino_y - 2
+            self.tetrimino_y as u8 - 2
         } + self.line_index;
         let general_counter = general_counter2 * 10;
 
@@ -350,7 +350,7 @@ impl GameplayState {
                 self.autorepeat_x = 16;
             }
         } else if input.get(Input::Left) {
-            self.tetrimino_x = u8::wrapping_sub(self.tetrimino_x, 1);
+            self.tetrimino_x -= 1;
             if !self.is_position_valid() {
                 self.tetrimino_x = original_y;
                 self.autorepeat_x = 16;
@@ -360,18 +360,17 @@ impl GameplayState {
 
     fn is_position_valid(&mut self) -> bool {
         for (tile_offset_x, tile_offset_y) in self.current_piece.get_tile_offsets() {
-            if i16::from(*tile_offset_y) + i16::from(self.tetrimino_y) >= 20 {
+            let x = tile_offset_x + self.tetrimino_x;
+            let y = tile_offset_y + self.tetrimino_y;
+            if x < 0 || x >= 10 || y >= 20 {
                 return false;
             }
 
             let y = i16::from(*tile_offset_x)
                 + i16::from(*tile_offset_y * 10)
-                + i16::from(u8::wrapping_add(self.tetrimino_y * 10, self.tetrimino_x));
+                + i16::from(self.tetrimino_y as u8) * 10
+                + i16::from(self.tetrimino_x as u8);
             if self.get_tile((y as u8 % 10).into(), (y as u8 / 10).into()) {
-                return false;
-            }
-
-            if u8::wrapping_add(*tile_offset_x as u8, self.tetrimino_x) >= 10 {
                 return false;
             }
         }
@@ -397,9 +396,9 @@ impl GameplayState {
 
     fn drop_tetrimino(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
-        if self.autorepeat_y >= 0x80 {
+        if self.autorepeat_y < 0 {
             if !pressed_input.get(Input::Down) {
-                self.autorepeat_y = u8::wrapping_add(self.autorepeat_y, 1);
+                self.autorepeat_y += 1;
                 return;
             }
             self.autorepeat_y = 0;
@@ -469,7 +468,7 @@ impl GameplayState {
 
     fn update_playfield(&mut self) {
         let highest_row_to_update = if self.tetrimino_y >= 2 {
-            self.tetrimino_y - 2
+            self.tetrimino_y as u8 - 2
         } else {
             0
         };
