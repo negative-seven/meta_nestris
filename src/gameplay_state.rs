@@ -15,7 +15,6 @@ pub struct GameplayState {
     pub tetrimino_y: u8,
     pub fall_timer: u8,
     pub game_mode_state: GameModeState,
-    pub render_playfield: bool,
     pub autorepeat_y: u8,
     pub current_piece: Piece,
     pub next_piece: Piece,
@@ -52,7 +51,6 @@ impl GameplayState {
             tetrimino_y: 0,
             fall_timer: 0,
             game_mode_state: GameModeState::HandleGameplay,
-            render_playfield: true,
             autorepeat_y: 0xa0,
             current_piece: menu_state.current_piece,
             next_piece: menu_state.next_piece,
@@ -134,8 +132,7 @@ impl GameplayState {
     fn start_button_handling(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
 
-        if self.render_playfield && pressed_input.get(Input::Start) {
-            self.render_playfield = false;
+        if pressed_input.get(Input::Start) {
             self.paused = true;
         }
     }
@@ -144,7 +141,6 @@ impl GameplayState {
         let pressed_input = input.difference(self.previous_input);
         if pressed_input == Input::Start {
             self.vram_row = 0;
-            self.render_playfield = true;
             self.game_mode_state = GameModeState::Unpause;
             self.paused = false;
         }
@@ -481,7 +477,7 @@ impl GameplayState {
     }
 
     fn render(&mut self) {
-        if !self.render_playfield {
+        if self.paused {
             return;
         }
 
