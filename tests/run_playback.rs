@@ -30,7 +30,7 @@ fn a_type_max_score_playback() {
         match next_to_last_state {
             State::MenuState(_) => panic!("next to last state is a menu state"),
             State::GameplayState(state) => assert!(
-                !(state.score[0] == 0x99 && state.score[1] == 0x99 && state.score[2] == 0x99),
+                state.score != 999999,
                 "{}: maximum score reached before last state",
                 filepath.display()
             ),
@@ -39,11 +39,8 @@ fn a_type_max_score_playback() {
         match last_state {
             State::MenuState(_) => panic!("last state is a menu state"),
             State::GameplayState(state) => {
-                let score = ((state.score[2] as u32) << 16)
-                    | ((state.score[1] as u32) << 8)
-                    | state.score[0] as u32;
                 assert!(
-                    score == 0x999999,
+                    state.score == 999999,
                     "{}: maximum score not reached in last state",
                     filepath.display()
                 );

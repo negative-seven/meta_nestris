@@ -8,7 +8,7 @@ pub struct GameplayState {
     pub do_nmi: bool,
     pub dead: bool,
     pub previous_input: Input,
-    pub score: [u8; 3],
+    pub score: u32,
     pub random: Random,
     pub tetrimino_x: u8,
     pub tetrimino_y: u8,
@@ -38,14 +38,14 @@ impl GameplayState {
         48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
         2, 1,
     ];
-    const POINTS_TABLE: [u16; 5] = [0x0, 0x40, 0x100, 0x300, 0x1200];
+    const POINTS_TABLE: [u16; 5] = [0, 40, 100, 300, 1200];
 
     pub fn from_menu_state(menu_state: &MenuState) -> Self {
         Self {
             do_nmi: menu_state.do_nmi,
             dead: false,
             previous_input: menu_state.previous_input,
-            score: [0; 3],
+            score: 0,
             random: menu_state.random.clone(),
             tetrimino_x: 5,
             tetrimino_y: 0,
@@ -234,50 +234,68 @@ impl GameplayState {
     }
 
     fn update_lines_and_statistics(&mut self) {
-        if self.completed_lines == 0 {
-            self.add_hold_down_points();
-            return;
+        fn to_bcd(number: u8) -> u8 {
+            number + 6 * (number / 10)
         }
 
-        if self.game_type == GameType::B {
-            self.lines = if self.lines > u16::from(self.completed_lines) {
-                self.lines - u16::from(self.completed_lines)
-            } else {
-                0
-            };
-            self.add_hold_down_points();
-            return;
+        fn from_bcd(number: u16) -> u16 {
+            let mut result = 0;
+            let mut shifted_number = number;
+            let mut multiplier = 1;
+            while shifted_number > 0 {
+                result += (shifted_number % 16) * multiplier;
+                shifted_number >>= 4;
+                multiplier *= 10;
+            }
+            result
         }
 
-        for _ in 0..self.completed_lines {
-            self.lines += 1;
-            self.lines %= 10000;
-
-            if self.lines % 10 == 0 {
-                let lines_middle_digits = (self.lines / 10) as u8 % 100;
-                let target_level = lines_middle_digits + 6 * (lines_middle_digits / 10);
-                if self.level_number < target_level {
-                    self.level_number += 1;
+        match self.game_type {
+            GameType::A => {
+                for _ in 0..self.completed_lines {
+                    self.lines += 1;
+                    self.lines %= 10000;
+                    if self.lines % 10 == 0 {
+                        let lines_middle_digits = (self.lines / 10) as u8 % 100;
+                        let target_level = lines_middle_digits + 6 * (lines_middle_digits / 10);
+                        if self.level_number < target_level {
+                            self.level_number += 1;
+                        }
+                    }
                 }
             }
+            GameType::B => {
+                self.lines = if self.lines > u16::from(self.completed_lines) {
+                    self.lines - u16::from(self.completed_lines)
+                } else {
+                    0
+                };
+            }
         }
-        self.add_hold_down_points();
-    }
 
-    // is there a bug? this doesn't seem to update highest byte of score
-    fn add_hold_down_points(&mut self) {
         if self.hold_down_points >= 2 {
-            self.score[0] += self.hold_down_points - 1;
-            if self.score[0] & 0xf >= 0xa {
-                self.score[0] += 6;
-            }
-
-            if self.score[0] & 0xf0 >= 0xa0 {
-                self.score[0] = u8::wrapping_add(self.score[0] & 0xf0, 0x60);
-                self.score[1] += 1;
+            // buggy score addition logic from base game
+            let low_digits = from_bcd(
+                u16::from(to_bcd((self.score % 100) as u8)) + u16::from(self.hold_down_points - 1),
+            );
+            self.score -= self.score % 100;
+            self.score += u32::from(low_digits);
+            if low_digits >= 100 {
+                self.score -= self.score % 10;
             }
         }
-        self.add_line_clear_points();
+        self.hold_down_points = 0;
+
+        if self.completed_lines != 0 {
+            self.score += u32::from(Self::POINTS_TABLE[self.completed_lines as usize])
+                * u32::from(self.level_number + 1);
+            if self.score > 999999 {
+                self.score = 999999;
+            }
+        }
+
+        self.completed_lines = 0;
+        self.play_state = PlayState::SkipTo7;
     }
 
     fn spawn_next_tetrimino(&mut self) {
@@ -445,33 +463,6 @@ impl GameplayState {
             0
         };
         self.vram_row = u8::min(self.vram_row, highest_row_to_update);
-    }
-
-    fn add_line_clear_points(&mut self) {
-        self.hold_down_points = 0;
-        for _ in 0..self.level_number + 1 {
-            self.score[0] += (Self::POINTS_TABLE[self.completed_lines as usize] & 0xff) as u8;
-            if self.score[0] >= 0xa0 {
-                self.score[0] = u8::wrapping_add(self.score[0], 0x60);
-                self.score[1] += 1;
-            }
-            self.score[1] += (Self::POINTS_TABLE[self.completed_lines as usize] >> 8) as u8;
-            if self.score[1] & 0xf >= 0xa {
-                self.score[1] += 6;
-            }
-            if self.score[1] & 0xf0 >= 0xa0 {
-                self.score[1] = u8::wrapping_add(self.score[1], 0x60);
-                self.score[2] += 1;
-            }
-            if self.score[2] & 0xf >= 0xa {
-                self.score[2] += 6;
-            }
-            if self.score[2] & 0xf0 >= 0xa0 {
-                self.score = [0x99; 3];
-            }
-        }
-        self.completed_lines = 0;
-        self.play_state = PlayState::SkipTo7;
     }
 
     fn render(&mut self) {
