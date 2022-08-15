@@ -18,7 +18,7 @@ pub struct GameplayState {
     pub autorepeat_y: i8,
     pub current_piece: Piece,
     pub next_piece: Piece,
-    pub vram_row: u8,
+    pub row_counter: u8,
     pub lines: u16,
     pub play_state: PlayState,
     pub autorepeat_x: u8,
@@ -28,7 +28,7 @@ pub struct GameplayState {
     pub line_index: u8,
     pub completed_lines: u8,
     pub game_type: GameType,
-    pub row_y: u8,
+    pub update_lines_delay: u8,
     pub frame_counter: u8,
     pub paused: bool,
 }
@@ -54,7 +54,7 @@ impl GameplayState {
             autorepeat_y: -96,
             current_piece: menu_state.current_piece,
             next_piece: menu_state.next_piece,
-            vram_row: 0,
+            row_counter: 0,
             lines: match menu_state.game_type {
                 GameType::A => 0,
                 GameType::B => 25,
@@ -67,7 +67,7 @@ impl GameplayState {
             line_index: 0,
             completed_lines: 0,
             game_type: menu_state.game_type,
-            row_y: 0,
+            update_lines_delay: 0,
             frame_counter: menu_state.frame_counter,
             paused: false,
         }
@@ -87,7 +87,22 @@ impl GameplayState {
         }
 
         if self.do_nmi {
-            self.render();
+            if !self.paused {
+                if self.play_state == PlayState::DoNothing {
+                    if self.frame_counter == 0 {
+                        self.update_lines_delay -= 1;
+                        if self.update_lines_delay == 0 {
+                            self.play_state = PlayState::UpdateLinesAndStatistics;
+                        }
+                    }
+                    self.row_counter = 0;
+                } else {
+                    if self.row_counter < 20 {
+                        self.row_counter += 4;
+                    }
+                }
+            }
+
             self.frame_counter = (self.frame_counter + 1) % 4;
             self.random.step();
         }
@@ -140,7 +155,7 @@ impl GameplayState {
     fn pause_loop(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
         if pressed_input == Input::Start {
-            self.vram_row = 0;
+            self.row_counter = 0;
             self.game_mode_state = GameModeState::Unpause;
             self.paused = false;
         }
@@ -173,7 +188,7 @@ impl GameplayState {
             return;
         }
 
-        if self.vram_row >= 32 {
+        if self.row_counter >= 20 {
             for (tile_offset_x, tile_offset_y) in self.current_piece.get_tile_offsets() {
                 let x = i16::from(self.tetrimino_x) + i16::from(*tile_offset_x);
                 let y = i16::from(self.tetrimino_y) + i16::from(*tile_offset_y);
@@ -188,7 +203,7 @@ impl GameplayState {
     }
 
     fn check_for_completed_rows(&mut self) {
-        if self.vram_row < 32 {
+        if self.row_counter < 20 {
             return;
         }
 
@@ -235,8 +250,8 @@ impl GameplayState {
     fn increment_line_index(&mut self) {
         self.line_index += 1;
         if self.line_index == 4 {
-            self.vram_row = 0;
-            self.row_y = 0;
+            self.row_counter = 0;
+            self.update_lines_delay = 5;
             self.play_state = PlayState::DoNothing;
             if self.completed_lines == 0 {
                 self.play_state = PlayState::UpdateLinesAndStatistics;
@@ -310,7 +325,7 @@ impl GameplayState {
     }
 
     fn spawn_next_tetrimino(&mut self) {
-        if self.vram_row < 32 {
+        if self.row_counter < 20 {
             return;
         }
         self.fall_timer = 0;
@@ -460,29 +475,6 @@ impl GameplayState {
         } else {
             0
         };
-        self.vram_row = u8::min(self.vram_row, highest_row_to_update);
-    }
-
-    fn render(&mut self) {
-        if self.paused {
-            return;
-        }
-
-        if self.play_state == PlayState::DoNothing {
-            if self.frame_counter == 0 {
-                self.row_y += 1;
-                if self.row_y >= 5 {
-                    self.play_state = PlayState::UpdateLinesAndStatistics;
-                }
-            }
-            self.vram_row = 0;
-        } else {
-            if self.vram_row < 21 {
-                self.vram_row += 4;
-                if self.vram_row >= 20 {
-                    self.vram_row = 32;
-                }
-            }
-        }
+        self.row_counter = u8::min(self.row_counter, highest_row_to_update);
     }
 }
