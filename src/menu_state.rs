@@ -20,7 +20,7 @@ pub struct MenuState {
     pub init_playfield: bool,
     pub current_piece: Piece,
     pub next_piece: Piece,
-    pub playfield: [[bool; 10]; 27],
+    pub playfield: [[bool; 10]; 26],
 }
 
 impl MenuState {
@@ -49,7 +49,7 @@ impl MenuState {
             init_playfield: false,
             current_piece: Piece::TUp,
             next_piece: Piece::TUp,
-            playfield: [[false; 10]; 27],
+            playfield: [[false; 10]; 26],
         }
     }
 

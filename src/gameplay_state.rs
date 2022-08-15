@@ -22,7 +22,7 @@ pub struct GameplayState {
     pub lines: u16,
     pub play_state: PlayState,
     pub autorepeat_x: u8,
-    pub playfield: [[bool; 10]; 27],
+    pub playfield: [[bool; 10]; 26],
     pub level_number: u8,
     pub hold_down_points: u8,
     pub line_index: u8,
@@ -204,6 +204,9 @@ impl GameplayState {
         self.completed_lines += 1;
 
         let mut y = u8::wrapping_sub(general_counter, 1);
+        if y == 255 {
+            y = 245;
+        }
         loop {
             self.playfield[(y / 10 + 1) as usize][(y % 10) as usize] =
                 self.playfield[(y / 10) as usize][(y % 10) as usize];
