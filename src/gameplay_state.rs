@@ -403,11 +403,8 @@ impl GameplayState {
             }
             self.autorepeat_y = 0;
         }
-        if self.autorepeat_y == 0 {
-            if input.get(Input::Left) || input.get(Input::Right) {
-                self.lookup_drop_speed();
-                return;
-            }
+
+        if self.autorepeat_y == 0 && !input.get(Input::Left) && !input.get(Input::Right) {
             if pressed_input.get(Input::Down)
                 && !pressed_input.get(Input::Left)
                 && !pressed_input.get(Input::Right)
@@ -415,40 +412,31 @@ impl GameplayState {
             {
                 self.autorepeat_y = 1;
             }
-            self.lookup_drop_speed();
-            return;
-        }
-
-        if !(input.get(Input::Down)
+        } else if !(input.get(Input::Down)
             && !input.get(Input::Left)
             && !input.get(Input::Right)
             && !input.get(Input::Up))
         {
             self.autorepeat_y = 0;
             self.hold_down_points = 0;
-            self.lookup_drop_speed();
-            return;
-        }
-        self.autorepeat_y += 1;
-        if self.autorepeat_y >= 3 {
-            self.autorepeat_y = 1;
-            self.hold_down_points += 1;
+        } else if self.autorepeat_y != 0 {
+            self.autorepeat_y += 1;
+            if self.autorepeat_y >= 3 {
+                self.autorepeat_y = 1;
+                self.hold_down_points += 1;
 
-            self.fall_timer = 0;
-            let original_y = self.tetrimino_y;
-            self.tetrimino_y += 1;
-            if !self.is_position_valid() {
-                self.tetrimino_y = original_y;
-                self.play_state = PlayState::LockTetrimino;
-                self.update_playfield();
+                self.fall_timer = 0;
+                let original_y = self.tetrimino_y;
+                self.tetrimino_y += 1;
+                if !self.is_position_valid() {
+                    self.tetrimino_y = original_y;
+                    self.play_state = PlayState::LockTetrimino;
+                    self.update_playfield();
+                }
+                return;
             }
-        } else {
-            self.lookup_drop_speed();
-            return;
         }
-    }
 
-    fn lookup_drop_speed(&mut self) {
         let frames_per_drop = if self.level_number < 0x1d {
             Self::FRAMES_PER_DROP_TABLE[self.level_number as usize]
         } else {
