@@ -2,6 +2,7 @@ use crate::{
     game_mode_state::GameModeState, game_type::GameType, input::Input, menu_state::MenuState,
     piece::Piece, play_state::PlayState, random::Random,
 };
+use bitvec::prelude::*;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct GameplayState {
@@ -22,7 +23,7 @@ pub struct GameplayState {
     pub lines: u16,
     pub play_state: PlayState,
     pub autorepeat_x: u8,
-    pub playfield: [[bool; 10]; 26],
+    pub playfield: BitArr!(for 0x100),
     pub level_number: u8,
     pub hold_down_points: u8,
     pub line_index: u8,
@@ -72,6 +73,14 @@ impl GameplayState {
             frame_counter: menu_state.frame_counter,
             paused: false,
         }
+    }
+
+    pub fn get_tile(&self, x: usize, y: usize) -> bool {
+        self.playfield[y * 10 + x]
+    }
+
+    fn set_tile(&mut self, x: usize, y: usize, tile: bool) {
+        self.playfield.set(y * 10 + x, tile);
     }
 
     pub fn step(&mut self, input: Input) {
@@ -173,7 +182,7 @@ impl GameplayState {
                 let x = i16::from(self.tetrimino_x) + i16::from(*tile_offset_x);
                 let y = i16::from(self.tetrimino_y) + i16::from(*tile_offset_y);
                 let offset = (y * 10 + x) as u8;
-                self.playfield[(offset / 10) as usize][(offset % 10) as usize] = true;
+                self.set_tile((offset % 10).into(), (offset / 10).into(), true);
             }
 
             self.line_index = 0;
@@ -195,7 +204,7 @@ impl GameplayState {
         let general_counter = general_counter2 * 10;
 
         for x in 0..10 {
-            if !self.playfield[general_counter2 as usize][x as usize] {
+            if !self.get_tile(x, general_counter2.into()) {
                 self.increment_line_index();
                 return;
             }
@@ -208,8 +217,11 @@ impl GameplayState {
             y = 245;
         }
         loop {
-            self.playfield[(y / 10 + 1) as usize][(y % 10) as usize] =
-                self.playfield[(y / 10) as usize][(y % 10) as usize];
+            self.set_tile(
+                (y % 10).into(),
+                (y / 10 + 1).into(),
+                self.get_tile((y % 10).into(), (y / 10).into()),
+            );
             if y == 0 {
                 break;
             }
@@ -217,7 +229,7 @@ impl GameplayState {
         }
 
         for x in 0..10 {
-            self.playfield[0][x] = false;
+            self.set_tile(x, 0, false);
         }
 
         self.current_piece = Piece::None;
@@ -359,7 +371,7 @@ impl GameplayState {
             let y = i16::from(*tile_offset_x)
                 + i16::from(*tile_offset_y * 10)
                 + i16::from(u8::wrapping_add(self.tetrimino_y * 10, self.tetrimino_x));
-            if self.playfield[(y as u8 / 10) as usize][(y as u8 % 10) as usize] {
+            if self.get_tile((y as u8 % 10).into(), (y as u8 / 10).into()) {
                 return false;
             }
 

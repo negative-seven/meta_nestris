@@ -2,6 +2,7 @@ use crate::{
     game_type::GameType, gameplay_state::GameplayState, input::Input, menu_mode::MenuMode,
     piece::Piece, random::Random,
 };
+use bitvec::prelude::*;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct MenuState {
@@ -20,7 +21,7 @@ pub struct MenuState {
     pub init_playfield: bool,
     pub current_piece: Piece,
     pub next_piece: Piece,
-    pub playfield: [[bool; 10]; 26],
+    pub playfield: BitArr!(for 0x100),
 }
 
 impl MenuState {
@@ -49,7 +50,7 @@ impl MenuState {
             init_playfield: false,
             current_piece: Piece::TUp,
             next_piece: Piece::TUp,
-            playfield: [[false; 10]; 26],
+            playfield: BitArray::ZERO,
         }
     }
 
@@ -84,6 +85,14 @@ impl MenuState {
         self.previous_input = input.clone();
 
         None
+    }
+
+    pub fn get_tile(&self, x: usize, y: usize) -> bool {
+        self.playfield[y * 10 + x]
+    }
+
+    fn set_tile(&mut self, x: usize, y: usize, tile: bool) {
+        self.playfield.set(y * 10 + x, tile);
     }
 
     fn branch_on_game_mode(&mut self, input: Input) {
@@ -242,8 +251,11 @@ impl MenuState {
             for general_counter3 in (0..10).rev() {
                 self.random.step();
                 let general_counter4 = Self::RNG_TABLE[(self.random.get_value() % 8) as usize];
-                self.playfield[general_counter2 as usize][general_counter3 as usize] =
-                    general_counter4;
+                self.set_tile(
+                    general_counter3,
+                    general_counter2.into(),
+                    general_counter4,
+                );
             }
 
             loop {
@@ -255,17 +267,19 @@ impl MenuState {
 
             let general_counter5 = self.random.get_value() % 16;
             let y = general_counter5 + general_counter2 * 10;
-            self.playfield[(y / 10) as usize][(y % 10) as usize] = false;
+            self.set_tile((y % 10).into(), (y / 10).into(), false);
         }
 
-        for y in 0..Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] {
+        for y in 0..Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[usize::from(self.start_height)] {
             for x in 0..10 {
-                self.playfield[y as usize][x as usize] = false;
+                self.set_tile(x, y.into(), false);
             }
         }
-        self.playfield
-            [Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[self.start_height as usize] as usize]
-            [0] = false; // behavior from the base game: leftmost tile of top row is always empty
+        self.set_tile(
+            0,
+            Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[usize::from(self.start_height)].into(),
+            false,
+        ); // behavior from the base game: leftmost tile of top row is always empty
         self.delay_timer = 12;
     }
 }
