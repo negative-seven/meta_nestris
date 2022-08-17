@@ -71,7 +71,7 @@ impl MenuState {
         }
 
         if self.initialize_tiles_for_b_type {
-            self.init_playfield_for_type_b();
+            self.initialize_type_b_tiles();
             self.initialize_tiles_for_b_type = false;
             self.previous_input = input.clone();
             return None;
@@ -90,7 +90,7 @@ impl MenuState {
             ));
         }
 
-        self.branch_on_game_mode(input);
+        self.step_main_logic(input);
         self.previous_input = input.clone();
 
         None
@@ -104,17 +104,17 @@ impl MenuState {
         self.tiles.set(y * 10 + x, tile);
     }
 
-    fn branch_on_game_mode(&mut self, input: Input) {
+    fn step_main_logic(&mut self, input: Input) {
         match self.menu_mode {
-            MenuMode::CopyrightScreen => self.legal_screen(input),
-            MenuMode::TitleScreen => self.title_screen(input),
-            MenuMode::GameTypeSelect => self.game_type_menu(input),
-            MenuMode::LevelSelect => self.level_menu(input),
-            MenuMode::InitializingGame => self.init_game_state(),
+            MenuMode::CopyrightScreen => self.step_legal_screen(input),
+            MenuMode::TitleScreen => self.step_title_screen(input),
+            MenuMode::GameTypeSelect => self.step_game_type_menu(input),
+            MenuMode::LevelSelect => self.step_level_menu(input),
+            MenuMode::InitializingGame => self.step_init_game_state(),
         }
     }
 
-    fn legal_screen(&mut self, input: Input) {
+    fn step_legal_screen(&mut self, input: Input) {
         self.nmi_on = true;
 
         let pressed_input = input.difference(self.previous_input);
@@ -127,7 +127,7 @@ impl MenuState {
         self.delay_timer = 5;
     }
 
-    fn title_screen(&mut self, input: Input) {
+    fn step_title_screen(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
         if pressed_input == Input::Start {
             self.menu_mode = MenuMode::GameTypeSelect;
@@ -135,7 +135,7 @@ impl MenuState {
         }
     }
 
-    fn game_type_menu(&mut self, input: Input) {
+    fn step_game_type_menu(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
         if pressed_input == Input::Right {
             self.game_type = GameType::B;
@@ -156,10 +156,10 @@ impl MenuState {
         }
     }
 
-    fn level_menu(&mut self, input: Input) {
+    fn step_level_menu(&mut self, input: Input) {
         self.nmi_on = true;
 
-        self.level_menu_handle_level_height_navigation(input);
+        self.handle_level_and_height_navigation(input);
 
         let pressed_input = input.difference(self.previous_input);
         if pressed_input == Input::Start {
@@ -176,7 +176,7 @@ impl MenuState {
         }
     }
 
-    fn level_menu_handle_level_height_navigation(&mut self, input: Input) {
+    fn handle_level_and_height_navigation(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
 
         if pressed_input == Input::Right {
@@ -234,7 +234,7 @@ impl MenuState {
         }
     }
 
-    fn init_game_state(&mut self) {
+    fn step_init_game_state(&mut self) {
         self.frame_counter = (self.frame_counter + 1) % 4;
         self.random.step();
         self.current_piece = self.random.next_piece();
@@ -252,7 +252,7 @@ impl MenuState {
         self.change_to_gameplay_state = true;
     }
 
-    fn init_playfield_for_type_b(&mut self) {
+    fn initialize_type_b_tiles(&mut self) {
         for general_counter2 in 8..20 {
             self.frame_counter = (self.frame_counter + 1) % 4;
             self.random.step();

@@ -129,16 +129,16 @@ impl GameplayState {
         }
 
         loop {
-            self.play_and_ending_high_score(input);
+            self.step_main_logic(input);
             self.previous_input = input.clone();
             return;
         }
     }
 
-    fn play_and_ending_high_score(&mut self, input: Input) {
+    fn step_main_logic(&mut self, input: Input) {
         if self.game_mode_state == GameModeState::HandleGameplay {
             self.fall_timer += 1;
-            self.branch_on_play_state_player1(input);
+            self.run_play_state_operation(input);
             self.game_mode_state = GameModeState::HandleStartButton;
 
             if self.dead || input == Input::Right | Input::Left | Input::Down
@@ -157,24 +157,24 @@ impl GameplayState {
         self.game_mode_state = GameModeState::HandleGameplay;
     }
 
-    fn branch_on_play_state_player1(&mut self, input: Input) {
+    fn run_play_state_operation(&mut self, input: Input) {
         match self.play_state {
             PlayState::MoveTetrimino => {
-                self.shift_tetrimino(input);
-                self.rotate_tetrimino(input);
-                self.drop_tetrimino(input);
+                self.try_shift_piece(input);
+                self.try_rotate_piece(input);
+                self.try_drop_piece(input);
             }
             PlayState::LockTetrimino => self.lock_tetrimino(),
-            PlayState::CheckForCompletedRows => self.check_completed_row(),
+            PlayState::CheckForCompletedRows => self.check_if_row_completed(),
             PlayState::DoNothing => (),
-            PlayState::UpdateLinesAndStatistics => self.update_lines_and_statistics(),
+            PlayState::UpdateLinesAndStatistics => self.update_score_and_line_count(),
             PlayState::Wait2UntilSpawnNextTetrimino => {
                 self.play_state = PlayState::Wait1UntilSpawnNextTetrimino;
             }
             PlayState::Wait1UntilSpawnNextTetrimino => {
                 self.play_state = PlayState::SpawnNextTetrimino;
             }
-            PlayState::SpawnNextTetrimino => self.spawn_next_tetrimino(),
+            PlayState::SpawnNextTetrimino => self.spawn_next_piece(),
         }
     }
 
@@ -197,12 +197,12 @@ impl GameplayState {
             }
 
             self.checked_row_offset = 0;
-            self.update_playfield();
+            self.update_rendered_row_counter();
             self.play_state = PlayState::CheckForCompletedRows;
         }
     }
 
-    fn check_completed_row(&mut self) {
+    fn check_if_row_completed(&mut self) {
         if self.rendered_row_counter < 20 {
             return;
         }
@@ -240,7 +240,7 @@ impl GameplayState {
         }
     }
 
-    fn update_lines_and_statistics(&mut self) {
+    fn update_score_and_line_count(&mut self) {
         fn to_bcd(number: u8) -> u8 {
             number + 6 * (number / 10)
         }
@@ -302,7 +302,7 @@ impl GameplayState {
         self.play_state = PlayState::Wait2UntilSpawnNextTetrimino;
     }
 
-    fn spawn_next_tetrimino(&mut self) {
+    fn spawn_next_piece(&mut self) {
         if self.rendered_row_counter < 20 {
             return;
         }
@@ -315,7 +315,7 @@ impl GameplayState {
         self.fall_autorepeat = 0;
     }
 
-    fn shift_tetrimino(&mut self, input: Input) {
+    fn try_shift_piece(&mut self, input: Input) {
         if input.get(Input::Down) {
             return;
         }
@@ -372,7 +372,7 @@ impl GameplayState {
         true
     }
 
-    fn rotate_tetrimino(&mut self, input: Input) {
+    fn try_rotate_piece(&mut self, input: Input) {
         let new_piece_rotation;
         let pressed_input = input.difference(self.previous_input);
         if pressed_input.get(Input::A) {
@@ -390,7 +390,7 @@ impl GameplayState {
         );
     }
 
-    fn drop_tetrimino(&mut self, input: Input) {
+    fn try_drop_piece(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
         if self.fall_autorepeat < 0 {
             if !pressed_input.get(Input::Down) {
@@ -428,7 +428,7 @@ impl GameplayState {
                     self.current_piece_y + 1,
                 ) {
                     self.play_state = PlayState::LockTetrimino;
-                    self.update_playfield();
+                    self.update_rendered_row_counter();
                 }
                 return;
             }
@@ -447,12 +447,12 @@ impl GameplayState {
                 self.current_piece_y + 1,
             ) {
                 self.play_state = PlayState::LockTetrimino;
-                self.update_playfield();
+                self.update_rendered_row_counter();
             }
         }
     }
 
-    fn update_playfield(&mut self) {
+    fn update_rendered_row_counter(&mut self) {
         let highest_row_to_update = if self.current_piece_y >= 2 {
             self.current_piece_y as u8 - 2
         } else {
