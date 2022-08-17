@@ -25,8 +25,8 @@ pub struct MenuState {
 }
 
 impl MenuState {
-    const TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE: [u8; 6] = [20, 17, 15, 12, 10, 8];
-    const RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
+    const B_TYPE_HEIGHTS: [u8; 6] = [20, 17, 15, 12, 10, 8];
+    const B_TYPE_RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
 
     pub fn new() -> Self {
         let mut random = Random::new();
@@ -238,7 +238,7 @@ impl MenuState {
 
             for general_counter3 in (0..10).rev() {
                 self.random.step();
-                let general_counter4 = Self::RNG_TABLE[(self.random.get_value() % 8) as usize];
+                let general_counter4 = Self::B_TYPE_RNG_TABLE[(self.random.get_value() % 8) as usize];
                 self.set_tile(general_counter3, general_counter2.into(), general_counter4);
             }
 
@@ -255,7 +255,7 @@ impl MenuState {
         }
 
         let tiles_to_clear = usize::from(
-            Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[usize::from(self.selected_height)],
+            Self::B_TYPE_HEIGHTS[usize::from(self.selected_height)],
         ) * 10
             + 1; // behavior from the base game: one additional tile
                  // (leftmost tile of the highest garbage row) is also cleared

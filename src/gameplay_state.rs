@@ -34,11 +34,11 @@ pub struct GameplayState {
 }
 
 impl GameplayState {
-    const FRAMES_PER_DROP_TABLE: [u8; 30] = [
+    const LEVEL_MAXIMUM_DROP_TIMES: [u8; 30] = [
         48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
         2, 1,
     ];
-    const POINTS_TABLE: [u16; 5] = [0, 40, 100, 300, 1200];
+    const LINE_CLEAR_POINTS: [u16; 5] = [0, 40, 100, 300, 1200];
 
     pub fn new(
         random: &Random,
@@ -294,7 +294,7 @@ impl GameplayState {
         self.hold_down_points = 0;
 
         if self.cleared_lines != 0 {
-            self.score += u32::from(Self::POINTS_TABLE[self.cleared_lines as usize])
+            self.score += u32::from(Self::LINE_CLEAR_POINTS[self.cleared_lines as usize])
                 * u32::from(self.level + 1);
         }
 
@@ -435,7 +435,7 @@ impl GameplayState {
         }
 
         let frames_per_drop = if self.level < 0x1d {
-            Self::FRAMES_PER_DROP_TABLE[self.level as usize]
+            Self::LEVEL_MAXIMUM_DROP_TIMES[self.level as usize]
         } else {
             1
         };
