@@ -108,7 +108,11 @@ impl GameplayState {
         }
 
         if self.paused {
-            self.pause_loop(input);
+            if input.difference(self.previous_input) == Input::Start {
+                self.row_counter = 0;
+                self.game_mode_state = GameModeState::Unpause;
+                self.paused = false;
+            }
             if self.paused {
                 self.previous_input = input.clone();
                 return;
@@ -133,7 +137,9 @@ impl GameplayState {
                 input == Input::Right | Input::Left | Input::Down
             }
             GameModeState::HandleStartButton => {
-                self.start_button_handling(input);
+                if input.difference(self.previous_input).get(Input::Start) {
+                    self.paused = true;
+                }
                 self.game_mode_state = GameModeState::HandleGameplay;
                 true
             }
@@ -141,23 +147,6 @@ impl GameplayState {
                 self.game_mode_state = GameModeState::HandleGameplay;
                 true
             }
-        }
-    }
-
-    fn start_button_handling(&mut self, input: Input) {
-        let pressed_input = input.difference(self.previous_input);
-
-        if pressed_input.get(Input::Start) {
-            self.paused = true;
-        }
-    }
-
-    fn pause_loop(&mut self, input: Input) {
-        let pressed_input = input.difference(self.previous_input);
-        if pressed_input == Input::Start {
-            self.row_counter = 0;
-            self.game_mode_state = GameModeState::Unpause;
-            self.paused = false;
         }
     }
 
