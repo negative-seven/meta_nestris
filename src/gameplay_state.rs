@@ -128,11 +128,8 @@ impl GameplayState {
             }
         }
 
-        loop {
-            self.step_main_logic(input);
-            self.previous_input = input.clone();
-            return;
-        }
+        self.step_main_logic(input);
+        self.previous_input = input.clone();
     }
 
     fn step_main_logic(&mut self, input: Input) {
