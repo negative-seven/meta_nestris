@@ -25,7 +25,7 @@ pub struct GameplayState {
     pub tiles: BitArr!(for 0x100),
     pub level: u8,
     pub hold_down_points: u8,
-    pub line_index: u8,
+    pub checked_row_offset: u8,
     pub cleared_lines: u8,
     pub game_type: GameType,
     pub update_lines_delay: u8,
@@ -73,7 +73,7 @@ impl GameplayState {
             tiles: tiles.clone(),
             level,
             hold_down_points: 0,
-            line_index: 0,
+            checked_row_offset: 0,
             cleared_lines: 0,
             game_type: game_type,
             update_lines_delay: 0,
@@ -167,7 +167,7 @@ impl GameplayState {
                 self.drop_tetrimino(input);
             }
             PlayState::LockTetrimino => self.lock_tetrimino(),
-            PlayState::CheckForCompletedRows => self.check_for_completed_rows(),
+            PlayState::CheckForCompletedRows => self.check_completed_row(),
             PlayState::DoNothing => (),
             PlayState::UpdateLinesAndStatistics => self.update_lines_and_statistics(),
             PlayState::SkipTo7 => {
@@ -198,60 +198,41 @@ impl GameplayState {
                 self.set_tile((offset % 10).into(), (offset / 10).into(), true);
             }
 
-            self.line_index = 0;
+            self.checked_row_offset = 0;
             self.update_playfield();
             self.play_state = PlayState::CheckForCompletedRows;
         }
     }
 
-    fn check_for_completed_rows(&mut self) {
+    fn check_completed_row(&mut self) {
         if self.rendered_row_counter < 20 {
             return;
         }
 
-        let general_counter2 = if self.current_piece_y < 2 {
+        let checked_row = if self.current_piece_y < 2 {
             0
         } else {
             self.current_piece_y as u8 - 2
-        } + self.line_index;
-        let general_counter = general_counter2 * 10;
+        } + self.checked_row_offset;
 
-        for x in 0..10 {
-            if !self.get_tile(x, general_counter2.into()) {
-                self.increment_line_index();
-                return;
-            }
+        // check if row cleared
+        let checked_row_start_index = usize::from(checked_row) * 10;
+        if self.tiles[checked_row_start_index..checked_row_start_index + 10].all() {
+            // move tiles down
+            let moved_tiles = if checked_row > 0 {
+                checked_row * 10
+            } else {
+                246 // bug from base game: top row clear causes 256 tiles to be moved;
+                    // indices 246..256 can be ignored as tiles 256..266 are never read in 1-player mode
+            };
+            self.tiles.copy_within(0..usize::from(moved_tiles), 10);
+            self.tiles[..10].fill(false);
+
+            self.cleared_lines += 1;
         }
 
-        self.cleared_lines += 1;
-
-        let mut y = u8::wrapping_sub(general_counter, 1);
-        if y == 255 {
-            y = 245;
-        }
-        loop {
-            self.set_tile(
-                (y % 10).into(),
-                (y / 10 + 1).into(),
-                self.get_tile((y % 10).into(), (y / 10).into()),
-            );
-            if y == 0 {
-                break;
-            }
-            y = u8::wrapping_sub(y, 1);
-        }
-
-        for x in 0..10 {
-            self.set_tile(x, 0, false);
-        }
-
-        self.current_piece = Piece::None;
-        self.increment_line_index();
-    }
-
-    fn increment_line_index(&mut self) {
-        self.line_index += 1;
-        if self.line_index == 4 {
+        self.checked_row_offset += 1;
+        if self.checked_row_offset == 4 {
             self.rendered_row_counter = 0;
             self.update_lines_delay = 5;
             self.play_state = PlayState::DoNothing;
