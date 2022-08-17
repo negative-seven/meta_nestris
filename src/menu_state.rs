@@ -232,33 +232,35 @@ impl MenuState {
     }
 
     fn initialize_type_b_tiles(&mut self) {
-        for general_counter2 in 8..20 {
+        for y in 8..20 {
             self.frame_counter = (self.frame_counter + 1) % 4;
             self.random.step();
 
-            for general_counter3 in (0..10).rev() {
+            // place tiles randomly
+            for x in (0..10).rev() {
                 self.random.step();
-                let general_counter4 = Self::B_TYPE_RNG_TABLE[(self.random.get_value() % 8) as usize];
-                self.set_tile(general_counter3, general_counter2.into(), general_counter4);
+                self.set_tile(
+                    x,
+                    y,
+                    Self::B_TYPE_RNG_TABLE[(self.random.get_value() % 8) as usize],
+                );
             }
 
+            // guarantee a hole in the row
             loop {
                 self.random.step();
                 if self.random.get_value() % 16 < 10 {
                     break;
                 }
             }
-
-            let general_counter5 = self.random.get_value() % 16;
-            let y = general_counter5 + general_counter2 * 10;
-            self.set_tile((y % 10).into(), (y / 10).into(), false);
+            let x = usize::from(self.random.get_value() % 16);
+            self.set_tile(x, y, false);
         }
 
-        let tiles_to_clear = usize::from(
-            Self::B_TYPE_HEIGHTS[usize::from(self.selected_height)],
-        ) * 10
-            + 1; // behavior from the base game: one additional tile
-                 // (leftmost tile of the highest garbage row) is also cleared
+        // behavior from the base game: one additional tile (leftmost tile of the highest garbage row)
+        // is also cleared
+        let tiles_to_clear =
+            usize::from(Self::B_TYPE_HEIGHTS[usize::from(self.selected_height)]) * 10 + 1;
         self.tiles[..tiles_to_clear].fill(false);
 
         self.delay_timer = 12;
