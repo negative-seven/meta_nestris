@@ -143,7 +143,7 @@ impl GameplayState {
                 self.fall_timer += 1;
                 self.branch_on_play_state_player1(input);
                 self.game_mode_state = GameModeState::HandleStartButton;
-                input == Input::Right | Input::Left | Input::Down
+                input == Input::Right | Input::Left | Input::Down // bug from base game - holding these inputs causes the frame to end early
             }
             GameModeState::HandleStartButton => {
                 if input.difference(self.previous_input).get(Input::Start) {
