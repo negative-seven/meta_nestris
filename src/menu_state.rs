@@ -254,17 +254,13 @@ impl MenuState {
             self.set_tile((y % 10).into(), (y / 10).into(), false);
         }
 
-        for y in 0..Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[usize::from(self.selected_height)]
-        {
-            for x in 0..10 {
-                self.set_tile(x, y.into(), false);
-            }
-        }
-        self.set_tile(
-            0,
-            Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[usize::from(self.selected_height)].into(),
-            false,
-        ); // behavior from the base game: leftmost tile of top row is always empty
+        let tiles_to_clear = usize::from(
+            Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[usize::from(self.selected_height)],
+        ) * 10
+            + 1; // behavior from the base game: one additional tile
+                 // (leftmost tile of the highest garbage row) is also cleared
+        self.tiles[..tiles_to_clear].fill(false);
+
         self.delay_timer = 12;
     }
 }
