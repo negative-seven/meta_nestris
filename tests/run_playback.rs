@@ -30,7 +30,7 @@ fn a_type_max_score_playback() {
         match next_to_last_state {
             State::MenuState(_) => panic!("next to last state is a menu state"),
             State::GameplayState(state) => assert!(
-                state.score != 999999,
+                state.score < 999999,
                 "{}: maximum score reached before last state",
                 filepath.display()
             ),
@@ -40,7 +40,7 @@ fn a_type_max_score_playback() {
             State::MenuState(_) => panic!("last state is a menu state"),
             State::GameplayState(state) => {
                 assert!(
-                    state.score == 999999,
+                    state.score >= 999999,
                     "{}: maximum score not reached in last state",
                     filepath.display()
                 );

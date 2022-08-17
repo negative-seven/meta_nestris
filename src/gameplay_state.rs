@@ -313,9 +313,6 @@ impl GameplayState {
         if self.cleared_lines != 0 {
             self.score += u32::from(Self::POINTS_TABLE[self.cleared_lines as usize])
                 * u32::from(self.level + 1);
-            if self.score > 999999 {
-                self.score = 999999;
-            }
         }
 
         self.cleared_lines = 0;
