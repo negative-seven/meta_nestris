@@ -137,22 +137,28 @@ impl MenuState {
 
     fn step_game_type_menu(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
-        if pressed_input == Input::Right {
-            self.game_type = GameType::B;
-        } else if pressed_input == Input::Left {
-            self.game_type = GameType::A;
-        } else if pressed_input == Input::Start {
-            self.menu_mode = MenuMode::LevelSelect;
-            self.delay_timer = 5;
-            self.selecting_height = false;
-            self.selected_level %= 10;
-            self.nmi_on = false;
-            for _ in 0..4 {
-                self.random.step();
+        match pressed_input {
+            Input::Left => {
+                self.game_type = GameType::A;
             }
-        } else if pressed_input == Input::B {
-            self.menu_mode = MenuMode::TitleScreen;
-            self.delay_timer = 6;
+            Input::Right => {
+                self.game_type = GameType::B;
+            }
+            Input::Start => {
+                self.menu_mode = MenuMode::LevelSelect;
+                self.delay_timer = 5;
+                self.selecting_height = false;
+                self.selected_level %= 10;
+                self.nmi_on = false;
+                for _ in 0..4 {
+                    self.random.step();
+                }
+            }
+            Input::B => {
+                self.menu_mode = MenuMode::TitleScreen;
+                self.delay_timer = 6;
+            }
+            _ => (),
         }
     }
 
