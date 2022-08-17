@@ -12,8 +12,8 @@ pub struct MenuState {
     pub menu_mode: MenuMode,
     pub game_type: GameType,
     pub frame_counter: u8,
+    pub selecting_height: bool,
     pub selected_level: u8,
-    pub selecting_height: u8,
     pub selected_height: u8,
     pub copyright_skip_timer: u8,
     pub delay_timer: u16,
@@ -42,7 +42,7 @@ impl MenuState {
             menu_mode: MenuMode::CopyrightScreen,
             game_type: GameType::A,
             selected_level: 0,
-            selecting_height: 0,
+            selecting_height: false,
             selected_height: 0,
             copyright_skip_timer: 0xff,
             delay_timer: 268,
@@ -144,7 +144,7 @@ impl MenuState {
         } else if pressed_input == Input::Start {
             self.menu_mode = MenuMode::LevelSelect;
             self.delay_timer = 5;
-            self.selecting_height = 0;
+            self.selecting_height = false;
             self.selected_level %= 10;
             self.nmi_on = false;
             for _ in 0..4 {
@@ -159,9 +159,40 @@ impl MenuState {
     fn step_level_menu(&mut self, input: Input) {
         self.nmi_on = true;
 
-        self.handle_level_and_height_navigation(input);
-
         let pressed_input = input.difference(self.previous_input);
+
+        if self.selecting_height {
+            let new_height = i8::try_from(self.selected_height).unwrap()
+                + match pressed_input {
+                    Input::Right => 1,
+                    Input::Left => -1,
+                    Input::Down => 3,
+                    Input::Up => -3,
+                    _ => 0,
+                };
+
+            if new_height >= 0 && new_height < 6 {
+                self.selected_height = new_height.try_into().unwrap();
+            }
+        } else {
+            let new_level = i8::try_from(self.selected_level).unwrap()
+                + match pressed_input {
+                    Input::Right => 1,
+                    Input::Left => -1,
+                    Input::Down => 5,
+                    Input::Up => -5,
+                    _ => 0,
+                };
+
+            if new_level >= 0 && new_level < 10 {
+                self.selected_level = new_level.try_into().unwrap();
+            }
+        }
+
+        if pressed_input == Input::A && self.game_type == GameType::B {
+            self.selecting_height ^= true;
+        }
+
         if pressed_input == Input::Start {
             if input == Input::Start | Input::A {
                 self.selected_level += 10;
@@ -173,64 +204,6 @@ impl MenuState {
             self.menu_mode = MenuMode::GameTypeSelect;
         } else {
             self.random.choose_random_holes();
-        }
-    }
-
-    fn handle_level_and_height_navigation(&mut self, input: Input) {
-        let pressed_input = input.difference(self.previous_input);
-
-        if pressed_input == Input::Right {
-            if self.selecting_height == 0 {
-                if self.selected_level != 9 {
-                    self.selected_level += 1;
-                }
-            } else {
-                if self.selected_height != 5 {
-                    self.selected_height += 1;
-                }
-            }
-        }
-
-        if pressed_input == Input::Left {
-            if self.selecting_height == 0 {
-                if self.selected_level != 0 {
-                    self.selected_level -= 1;
-                }
-            } else {
-                if self.selected_height != 0 {
-                    self.selected_height -= 1;
-                }
-            }
-        }
-
-        if pressed_input == Input::Down {
-            if self.selecting_height == 0 {
-                if self.selected_level < 5 {
-                    self.selected_level += 5;
-                }
-            } else {
-                if self.selected_height < 3 {
-                    self.selected_height += 3;
-                }
-            }
-        }
-
-        if pressed_input == Input::Up {
-            if self.selecting_height == 0 {
-                if self.selected_level >= 5 {
-                    self.selected_level -= 5;
-                }
-            } else {
-                if self.selected_height >= 3 {
-                    self.selected_height -= 3;
-                }
-            }
-        }
-
-        if self.game_type == GameType::B {
-            if pressed_input == Input::A {
-                self.selecting_height ^= 1;
-            }
         }
     }
 
