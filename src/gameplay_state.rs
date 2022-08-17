@@ -181,7 +181,11 @@ impl GameplayState {
     }
 
     fn lock_tetrimino(&mut self) {
-        if !self.is_position_valid() {
+        if !self.try_set_piece_and_position(
+            self.current_piece,
+            self.current_piece_x,
+            self.current_piece_y,
+        ) {
             self.dead = true;
             return;
         }
@@ -333,7 +337,6 @@ impl GameplayState {
     }
 
     fn shift_tetrimino(&mut self, input: Input) {
-        let original_y = self.current_piece_x;
         if input.get(Input::Down) {
             return;
         }
@@ -353,55 +356,59 @@ impl GameplayState {
             self.shift_autorepeat = 0;
         }
 
+        let new_piece_x;
         if input.get(Input::Right) {
-            self.current_piece_x += 1;
-            if !self.is_position_valid() {
-                self.current_piece_x = original_y;
-                self.shift_autorepeat = 16;
-            }
+            new_piece_x = self.current_piece_x + 1;
         } else if input.get(Input::Left) {
-            self.current_piece_x -= 1;
-            if !self.is_position_valid() {
-                self.current_piece_x = original_y;
-                self.shift_autorepeat = 16;
-            }
+            new_piece_x = self.current_piece_x - 1;
+        } else {
+            return;
+        }
+
+        if !self.try_set_piece_and_position(self.current_piece, new_piece_x, self.current_piece_y) {
+            self.shift_autorepeat = 16;
         }
     }
 
-    fn is_position_valid(&mut self) -> bool {
-        for (tile_offset_x, tile_offset_y) in self.current_piece.get_tile_offsets() {
-            let x = tile_offset_x + self.current_piece_x;
-            let y = tile_offset_y + self.current_piece_y;
-            if x < 0 || x >= 10 || y >= 20 {
+    fn try_set_piece_and_position(&mut self, piece: Piece, x: i8, y: i8) -> bool {
+        for (tile_offset_x, tile_offset_y) in piece.get_tile_offsets() {
+            let tile_x = x + tile_offset_x;
+            let tile_y = y + tile_offset_y;
+            if tile_x < 0 || tile_x >= 10 || tile_y >= 20 {
                 return false;
             }
 
             let y = i16::from(*tile_offset_x)
                 + i16::from(*tile_offset_y * 10)
-                + i16::from(self.current_piece_y as u8) * 10
-                + i16::from(self.current_piece_x as u8);
+                + i16::from(y as u8) * 10
+                + i16::from(x as u8);
             if self.get_tile((y as u8 % 10).into(), (y as u8 / 10).into()) {
                 return false;
             }
         }
 
+        self.current_piece = piece;
+        self.current_piece_x = x;
+        self.current_piece_y = y;
         true
     }
 
     fn rotate_tetrimino(&mut self, input: Input) {
-        let original_y = self.current_piece;
+        let new_piece_rotation;
         let pressed_input = input.difference(self.previous_input);
         if pressed_input.get(Input::A) {
-            self.current_piece = self.current_piece.get_clockwise_rotation();
-            if !self.is_position_valid() {
-                self.current_piece = original_y;
-            }
+            new_piece_rotation = self.current_piece.get_clockwise_rotation();
         } else if pressed_input.get(Input::B) {
-            self.current_piece = self.current_piece.get_counterclockwise_rotation();
-            if !self.is_position_valid() {
-                self.current_piece = original_y;
-            }
+            new_piece_rotation = self.current_piece.get_counterclockwise_rotation();
+        } else {
+            return;
         }
+
+        self.try_set_piece_and_position(
+            new_piece_rotation,
+            self.current_piece_x,
+            self.current_piece_y,
+        );
     }
 
     fn drop_tetrimino(&mut self, input: Input) {
@@ -436,10 +443,11 @@ impl GameplayState {
                 self.hold_down_points += 1;
 
                 self.fall_timer = 0;
-                let original_y = self.current_piece_y;
-                self.current_piece_y += 1;
-                if !self.is_position_valid() {
-                    self.current_piece_y = original_y;
+                if !self.try_set_piece_and_position(
+                    self.current_piece,
+                    self.current_piece_x,
+                    self.current_piece_y + 1,
+                ) {
                     self.play_state = PlayState::LockTetrimino;
                     self.update_playfield();
                 }
@@ -454,10 +462,11 @@ impl GameplayState {
         };
         if self.fall_timer >= frames_per_drop {
             self.fall_timer = 0;
-            let original_y = self.current_piece_y;
-            self.current_piece_y += 1;
-            if !self.is_position_valid() {
-                self.current_piece_y = original_y;
+            if !self.try_set_piece_and_position(
+                self.current_piece,
+                self.current_piece_x,
+                self.current_piece_y + 1,
+            ) {
                 self.play_state = PlayState::LockTetrimino;
                 self.update_playfield();
             }
