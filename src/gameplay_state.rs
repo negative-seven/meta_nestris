@@ -129,34 +129,32 @@ impl GameplayState {
         }
 
         loop {
-            let force_end_loop = self.play_and_ending_high_score(input);
-            if force_end_loop || self.dead || self.paused {
-                self.previous_input = input.clone();
-                return;
-            }
+            self.play_and_ending_high_score(input);
+            self.previous_input = input.clone();
+            return;
         }
     }
 
-    fn play_and_ending_high_score(&mut self, input: Input) -> bool {
-        match self.game_mode_state {
-            GameModeState::HandleGameplay => {
-                self.fall_timer += 1;
-                self.branch_on_play_state_player1(input);
-                self.game_mode_state = GameModeState::HandleStartButton;
-                input == Input::Right | Input::Left | Input::Down // bug from base game - holding these inputs causes the frame to end early
-            }
-            GameModeState::HandleStartButton => {
-                if input.difference(self.previous_input).get(Input::Start) {
-                    self.paused = true;
-                }
-                self.game_mode_state = GameModeState::HandleGameplay;
-                true
-            }
-            GameModeState::Unpause => {
-                self.game_mode_state = GameModeState::HandleGameplay;
-                true
+    fn play_and_ending_high_score(&mut self, input: Input) {
+        if self.game_mode_state == GameModeState::HandleGameplay {
+            self.fall_timer += 1;
+            self.branch_on_play_state_player1(input);
+            self.game_mode_state = GameModeState::HandleStartButton;
+
+            if self.dead || input == Input::Right | Input::Left | Input::Down
+            // bug from base game - holding right, left and down causes the frame to end early
+            {
+                return;
             }
         }
+
+        if self.game_mode_state == GameModeState::HandleStartButton {
+            if input.difference(self.previous_input).get(Input::Start) {
+                self.paused = true;
+            }
+        }
+
+        self.game_mode_state = GameModeState::HandleGameplay;
     }
 
     fn branch_on_play_state_player1(&mut self, input: Input) {
