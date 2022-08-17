@@ -2,11 +2,11 @@ use std::fmt::Display;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum MenuMode {
-    CopyrightScreen = 0,
-    TitleScreen = 1,
-    GameTypeSelect = 2,
-    LevelSelect = 3,
-    InitializingGame = 4,
+    CopyrightScreen,
+    TitleScreen,
+    GameTypeSelect,
+    LevelSelect,
+    InitializingGame,
 }
 
 impl Display for MenuMode {

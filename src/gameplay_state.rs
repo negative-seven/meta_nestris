@@ -168,10 +168,10 @@ impl GameplayState {
             PlayState::CheckForCompletedRows => self.check_completed_row(),
             PlayState::DoNothing => (),
             PlayState::UpdateLinesAndStatistics => self.update_lines_and_statistics(),
-            PlayState::SkipTo7 => {
-                self.play_state = PlayState::SkipTo8;
+            PlayState::Wait2UntilSpawnNextTetrimino => {
+                self.play_state = PlayState::Wait1UntilSpawnNextTetrimino;
             }
-            PlayState::SkipTo8 => {
+            PlayState::Wait1UntilSpawnNextTetrimino => {
                 self.play_state = PlayState::SpawnNextTetrimino;
             }
             PlayState::SpawnNextTetrimino => self.spawn_next_tetrimino(),
@@ -299,7 +299,7 @@ impl GameplayState {
         }
 
         self.cleared_lines = 0;
-        self.play_state = PlayState::SkipTo7;
+        self.play_state = PlayState::Wait2UntilSpawnNextTetrimino;
     }
 
     fn spawn_next_tetrimino(&mut self) {
