@@ -6,22 +6,22 @@ use bitvec::prelude::*;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct MenuState {
-    pub do_nmi: bool,
+    pub nmi_on: bool,
     pub previous_input: Input,
     pub random: Random,
     pub menu_mode: MenuMode,
     pub game_type: GameType,
     pub frame_counter: u8,
-    pub start_level: u8,
-    pub selecting_level_or_height: u8,
-    pub start_height: u8,
-    pub timeout_counter: u8,
+    pub selected_level: u8,
+    pub selecting_height: u8,
+    pub selected_height: u8,
+    pub copyright_skip_timer: u8,
     pub delay_timer: u16,
-    pub to_gameplay_state: bool,
-    pub init_playfield: bool,
+    pub change_to_gameplay_state: bool,
+    pub initialize_tiles_for_b_type: bool,
     pub current_piece: Piece,
     pub next_piece: Piece,
-    pub playfield: BitArr!(for 0x100),
+    pub tiles: BitArr!(for 0x100),
 }
 
 impl MenuState {
@@ -35,27 +35,27 @@ impl MenuState {
         }
 
         Self {
-            do_nmi: false,
+            nmi_on: false,
             previous_input: Input::new(),
             frame_counter: 3,
             random,
             menu_mode: MenuMode::CopyrightScreen,
             game_type: GameType::A,
-            start_level: 0,
-            selecting_level_or_height: 0,
-            start_height: 0,
-            timeout_counter: 0xff,
+            selected_level: 0,
+            selecting_height: 0,
+            selected_height: 0,
+            copyright_skip_timer: 0xff,
             delay_timer: 268,
-            to_gameplay_state: false,
-            init_playfield: false,
+            change_to_gameplay_state: false,
+            initialize_tiles_for_b_type: false,
             current_piece: Piece::TUp,
             next_piece: Piece::TUp,
-            playfield: BitArray::ZERO,
+            tiles: BitArray::ZERO,
         }
     }
 
     pub fn step(&mut self, input: Input) -> Option<GameplayState> {
-        if self.do_nmi {
+        if self.nmi_on {
             self.frame_counter = (self.frame_counter + 1) % 4;
             self.random.step();
         }
@@ -63,21 +63,21 @@ impl MenuState {
         if self.delay_timer > 0 {
             self.delay_timer -= 1;
             if self.delay_timer == 0 {
-                self.do_nmi = true;
+                self.nmi_on = true;
             } else {
                 self.previous_input = input.clone();
                 return None;
             }
         }
 
-        if self.init_playfield {
+        if self.initialize_tiles_for_b_type {
             self.init_playfield_for_type_b();
-            self.init_playfield = false;
+            self.initialize_tiles_for_b_type = false;
             self.previous_input = input.clone();
             return None;
         }
 
-        if self.to_gameplay_state {
+        if self.change_to_gameplay_state {
             return Some(GameplayState::from_menu_state(self));
         }
 
@@ -88,11 +88,11 @@ impl MenuState {
     }
 
     pub fn get_tile(&self, x: usize, y: usize) -> bool {
-        self.playfield[y * 10 + x]
+        self.tiles[y * 10 + x]
     }
 
     fn set_tile(&mut self, x: usize, y: usize, tile: bool) {
-        self.playfield.set(y * 10 + x, tile);
+        self.tiles.set(y * 10 + x, tile);
     }
 
     fn branch_on_game_mode(&mut self, input: Input) {
@@ -106,11 +106,11 @@ impl MenuState {
     }
 
     fn legal_screen(&mut self, input: Input) {
-        self.do_nmi = true;
+        self.nmi_on = true;
 
         let pressed_input = input.difference(self.previous_input);
-        if pressed_input != Input::Start && self.timeout_counter != 0 {
-            self.timeout_counter -= 1;
+        if pressed_input != Input::Start && self.copyright_skip_timer != 0 {
+            self.copyright_skip_timer -= 1;
             return;
         }
 
@@ -135,9 +135,9 @@ impl MenuState {
         } else if pressed_input == Input::Start {
             self.menu_mode = MenuMode::LevelSelect;
             self.delay_timer = 5;
-            self.selecting_level_or_height = 0;
-            self.start_level %= 10;
-            self.do_nmi = false;
+            self.selecting_height = 0;
+            self.selected_level %= 10;
+            self.nmi_on = false;
             for _ in 0..4 {
                 self.random.step();
             }
@@ -148,14 +148,14 @@ impl MenuState {
     }
 
     fn level_menu(&mut self, input: Input) {
-        self.do_nmi = true;
+        self.nmi_on = true;
 
         self.level_menu_handle_level_height_navigation(input);
 
         let pressed_input = input.difference(self.previous_input);
         if pressed_input == Input::Start {
             if input == Input::Start | Input::A {
-                self.start_level += 10;
+                self.selected_level += 10;
             }
             self.delay_timer = 3;
             self.menu_mode = MenuMode::InitializingGame;
@@ -171,56 +171,56 @@ impl MenuState {
         let pressed_input = input.difference(self.previous_input);
 
         if pressed_input == Input::Right {
-            if self.selecting_level_or_height == 0 {
-                if self.start_level != 9 {
-                    self.start_level += 1;
+            if self.selecting_height == 0 {
+                if self.selected_level != 9 {
+                    self.selected_level += 1;
                 }
             } else {
-                if self.start_height != 5 {
-                    self.start_height += 1;
+                if self.selected_height != 5 {
+                    self.selected_height += 1;
                 }
             }
         }
 
         if pressed_input == Input::Left {
-            if self.selecting_level_or_height == 0 {
-                if self.start_level != 0 {
-                    self.start_level -= 1;
+            if self.selecting_height == 0 {
+                if self.selected_level != 0 {
+                    self.selected_level -= 1;
                 }
             } else {
-                if self.start_height != 0 {
-                    self.start_height -= 1;
+                if self.selected_height != 0 {
+                    self.selected_height -= 1;
                 }
             }
         }
 
         if pressed_input == Input::Down {
-            if self.selecting_level_or_height == 0 {
-                if self.start_level < 5 {
-                    self.start_level += 5;
+            if self.selecting_height == 0 {
+                if self.selected_level < 5 {
+                    self.selected_level += 5;
                 }
             } else {
-                if self.start_height < 3 {
-                    self.start_height += 3;
+                if self.selected_height < 3 {
+                    self.selected_height += 3;
                 }
             }
         }
 
         if pressed_input == Input::Up {
-            if self.selecting_level_or_height == 0 {
-                if self.start_level >= 5 {
-                    self.start_level -= 5;
+            if self.selecting_height == 0 {
+                if self.selected_level >= 5 {
+                    self.selected_level -= 5;
                 }
             } else {
-                if self.start_height >= 3 {
-                    self.start_height -= 3;
+                if self.selected_height >= 3 {
+                    self.selected_height -= 3;
                 }
             }
         }
 
         if self.game_type == GameType::B {
             if pressed_input == Input::A {
-                self.selecting_level_or_height ^= 1;
+                self.selecting_height ^= 1;
             }
         }
     }
@@ -236,11 +236,11 @@ impl MenuState {
                 self.delay_timer = 1;
             }
             GameType::B => {
-                self.init_playfield = true;
+                self.initialize_tiles_for_b_type = true;
             }
         }
-        self.do_nmi = false;
-        self.to_gameplay_state = true;
+        self.nmi_on = false;
+        self.change_to_gameplay_state = true;
     }
 
     fn init_playfield_for_type_b(&mut self) {
@@ -251,11 +251,7 @@ impl MenuState {
             for general_counter3 in (0..10).rev() {
                 self.random.step();
                 let general_counter4 = Self::RNG_TABLE[(self.random.get_value() % 8) as usize];
-                self.set_tile(
-                    general_counter3,
-                    general_counter2.into(),
-                    general_counter4,
-                );
+                self.set_tile(general_counter3, general_counter2.into(), general_counter4);
             }
 
             loop {
@@ -270,14 +266,15 @@ impl MenuState {
             self.set_tile((y % 10).into(), (y / 10).into(), false);
         }
 
-        for y in 0..Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[usize::from(self.start_height)] {
+        for y in 0..Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[usize::from(self.selected_height)]
+        {
             for x in 0..10 {
                 self.set_tile(x, y.into(), false);
             }
         }
         self.set_tile(
             0,
-            Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[usize::from(self.start_height)].into(),
+            Self::TYPE_BBLANK_INIT_COUNT_BY_HEIGHT_TABLE[usize::from(self.selected_height)].into(),
             false,
         ); // behavior from the base game: leftmost tile of top row is always empty
         self.delay_timer = 12;
