@@ -78,7 +78,16 @@ impl MenuState {
         }
 
         if self.change_to_gameplay_state {
-            return Some(GameplayState::from_menu_state(self));
+            return Some(GameplayState::new(
+                &self.random,
+                self.frame_counter,
+                self.previous_input,
+                self.game_type,
+                self.selected_level,
+                &self.tiles,
+                self.current_piece,
+                self.next_piece,
+            ));
         }
 
         self.branch_on_game_mode(input);

@@ -1,6 +1,6 @@
 use crate::{
-    game_mode_state::GameModeState, game_type::GameType, input::Input, menu_state::MenuState,
-    piece::Piece, play_state::PlayState, random::Random,
+    game_mode_state::GameModeState, game_type::GameType, input::Input, piece::Piece,
+    play_state::PlayState, random::Random,
 };
 use bitvec::prelude::*;
 
@@ -40,35 +40,44 @@ impl GameplayState {
     ];
     const POINTS_TABLE: [u16; 5] = [0, 40, 100, 300, 1200];
 
-    pub fn from_menu_state(menu_state: &MenuState) -> Self {
+    pub fn new(
+        random: &Random,
+        frame_counter: u8,
+        previous_input: Input,
+        game_type: GameType,
+        level: u8,
+        tiles: &BitArr!(for 0x100),
+        first_piece: Piece,
+        second_piece: Piece,
+    ) -> Self {
         Self {
-            nmi_on: menu_state.nmi_on,
+            nmi_on: true,
             dead: false,
-            previous_input: menu_state.previous_input,
+            previous_input: previous_input,
             score: 0,
-            random: menu_state.random.clone(),
+            random: random.clone(),
             current_piece_x: 5,
             current_piece_y: 0,
             fall_timer: 0,
             game_mode_state: GameModeState::HandleGameplay,
             fall_autorepeat: -96,
-            current_piece: menu_state.current_piece,
-            next_piece: menu_state.next_piece,
+            current_piece: first_piece,
+            next_piece: second_piece,
             rendered_row_counter: 0,
-            line_count: match menu_state.game_type {
+            line_count: match game_type {
                 GameType::A => 0,
                 GameType::B => 25,
             },
             play_state: PlayState::MoveTetrimino,
             shift_autorepeat: 0,
-            tiles: menu_state.tiles,
-            level: menu_state.selected_level,
+            tiles: tiles.clone(),
+            level,
             hold_down_points: 0,
             line_index: 0,
             cleared_lines: 0,
-            game_type: menu_state.game_type,
+            game_type: game_type,
             update_lines_delay: 0,
-            frame_counter: menu_state.frame_counter,
+            frame_counter: frame_counter,
             paused: false,
         }
     }
