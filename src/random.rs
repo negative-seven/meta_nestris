@@ -19,25 +19,46 @@ impl Random {
         }
     }
 
-    pub fn step(&mut self) {
+    pub fn cycle(&mut self) {
         self.index += 1;
         self.index %= Self::RNG_STATES_COUNT;
     }
 
-    pub fn choose_random_holes(&mut self) {
-        for _ in 0..2 {
-            loop {
-                self.index += 1;
-                self.index %= Self::RNG_STATES_COUNT;
+    pub fn cycle_multiple(&mut self, count: usize) {
+        for _ in 0..count {
+            self.cycle();
+        }
+    }
 
-                if (self.get_value() % 16) < 10 {
-                    break;
-                }
+    pub fn cycle_do_while(&mut self, condition: impl Fn(u8) -> bool) {
+        loop {
+            self.cycle();
+            if !condition(self.get_value()) {
+                break;
             }
         }
     }
 
-    pub fn next_piece(&mut self) -> Piece {
+    pub fn get_value(&self) -> u8 {
+        lazy_static! {
+            static ref RNG_VALUES: [u8; Random::RNG_STATES_COUNT as usize] = {
+                let mut values = [0; Random::RNG_STATES_COUNT as usize];
+
+                let mut current: u16 = 0x8988;
+                for i in 0..values.len() {
+                    values[i] = (current >> 8) as u8;
+
+                    let new_bit = ((current >> 9) ^ (current >> 1)) & 1;
+                    current = (new_bit << 15) | (current >> 1);
+                }
+                return values;
+            };
+        }
+
+        return RNG_VALUES[usize::from(self.index)];
+    }
+
+    pub fn get_piece(&mut self) -> Piece {
         const PIECE_TABLE: [Piece; 7] = [
             Piece::TDown,
             Piece::JLeft,
@@ -62,24 +83,5 @@ impl Random {
         self.last_piece = get_piece(piece_index);
 
         return self.last_piece;
-    }
-
-    pub fn get_value(&self) -> u8 {
-        lazy_static! {
-            static ref RNG_VALUES: [u8; Random::RNG_STATES_COUNT as usize] = {
-                let mut values = [0; Random::RNG_STATES_COUNT as usize];
-
-                let mut current: u16 = 0x8988;
-                for i in 0..values.len() {
-                    values[i] = (current >> 8) as u8;
-
-                    let new_bit = ((current >> 9) ^ (current >> 1)) & 1;
-                    current = (new_bit << 15) | (current >> 1);
-                }
-                return values;
-            };
-        }
-
-        return RNG_VALUES[usize::from(self.index)];
     }
 }

@@ -113,7 +113,7 @@ impl GameplayState {
             }
 
             self.frame_counter = (self.frame_counter + 1) % 4;
-            self.random.step();
+            self.random.cycle();
         }
 
         if self.paused {
@@ -308,7 +308,7 @@ impl GameplayState {
         self.play_state = PlayState::MoveTetrimino;
         self.current_piece_x = 5;
         self.current_piece = self.next_piece;
-        self.next_piece = self.random.next_piece();
+        self.next_piece = self.random.get_piece();
         self.fall_autorepeat = 0;
     }
 

@@ -30,9 +30,7 @@ impl MenuState {
 
     pub fn new() -> Self {
         let mut random = Random::new();
-        for _ in 0..263 {
-            random.step();
-        }
+        random.cycle_multiple(263);
 
         Self {
             nmi_on: false,
@@ -57,7 +55,7 @@ impl MenuState {
     pub fn step(&mut self, input: Input) -> Option<GameplayState> {
         if self.nmi_on {
             self.frame_counter = (self.frame_counter + 1) % 4;
-            self.random.step();
+            self.random.cycle();
         }
 
         if self.delay_timer > 0 {
@@ -150,9 +148,7 @@ impl MenuState {
                 self.selecting_height = false;
                 self.selected_level %= 10;
                 self.nmi_on = false;
-                for _ in 0..4 {
-                    self.random.step();
-                }
+                self.random.cycle_multiple(4);
             }
             Input::B => {
                 self.menu_mode = MenuMode::TitleScreen;
@@ -209,16 +205,18 @@ impl MenuState {
             self.delay_timer = 4;
             self.menu_mode = MenuMode::GameTypeSelect;
         } else {
-            self.random.choose_random_holes();
+            for _ in 0..2 {
+                self.random.cycle_do_while(|v| v % 16 >= 10);
+            }
         }
     }
 
     fn step_init_game_state(&mut self) {
         self.frame_counter = (self.frame_counter + 1) % 4;
-        self.random.step();
-        self.current_piece = self.random.next_piece();
-        self.random.step();
-        self.next_piece = self.random.next_piece();
+        self.random.cycle();
+        self.current_piece = self.random.get_piece();
+        self.random.cycle();
+        self.next_piece = self.random.get_piece();
         match self.game_type {
             GameType::A => {
                 self.delay_timer = 1;
@@ -234,11 +232,11 @@ impl MenuState {
     fn initialize_type_b_tiles(&mut self) {
         for y in 8..20 {
             self.frame_counter = (self.frame_counter + 1) % 4;
-            self.random.step();
+            self.random.cycle();
 
             // place tiles randomly
             for x in (0..10).rev() {
-                self.random.step();
+                self.random.cycle();
                 self.set_tile(
                     x,
                     y,
@@ -247,12 +245,7 @@ impl MenuState {
             }
 
             // guarantee a hole in the row
-            loop {
-                self.random.step();
-                if self.random.get_value() % 16 < 10 {
-                    break;
-                }
-            }
+            self.random.cycle_do_while(|v| v % 16 >= 10);
             let x = usize::from(self.random.get_value() % 16);
             self.set_tile(x, y, false);
         }
