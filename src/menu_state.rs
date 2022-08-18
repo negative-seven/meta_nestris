@@ -1,6 +1,6 @@
 use crate::{
     game_type::GameType, gameplay_state::GameplayState, input::Input, menu_mode::MenuMode,
-    piece::Piece, random::Random,
+    random::Random,
 };
 use bitvec::prelude::*;
 
@@ -19,8 +19,6 @@ pub struct MenuState {
     pub tiles: BitArr!(for 0x100),
     pub selected_level: u8,
     pub selected_height: u8,
-    pub current_piece: Piece,
-    pub next_piece: Piece,
 }
 
 impl MenuState {
@@ -41,8 +39,6 @@ impl MenuState {
             copyright_skip_timer: 0xff,
             delay_timer: 268,
             change_to_gameplay_state: false,
-            current_piece: Piece::TUp,
-            next_piece: Piece::TUp,
             tiles: BitArray::ZERO,
         }
     }
@@ -72,8 +68,6 @@ impl MenuState {
                 self.selected_level,
                 self.selected_height,
                 &self.tiles,
-                self.current_piece,
-                self.next_piece,
             ));
         }
 
@@ -194,10 +188,6 @@ impl MenuState {
 
     fn step_init_game_state(&mut self) {
         self.frame_counter = (self.frame_counter + 1) % 4;
-        self.random.cycle();
-        self.current_piece = self.random.get_piece();
-        self.random.cycle();
-        self.next_piece = self.random.get_piece();
         match self.game_type {
             GameType::A => {
                 self.delay_timer = 1;

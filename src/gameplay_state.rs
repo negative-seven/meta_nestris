@@ -50,8 +50,6 @@ impl GameplayState {
         level: u8,
         b_type_height: u8,
         tiles: &BitArr!(for 0x100),
-        first_piece: Piece,
-        second_piece: Piece,
     ) -> Self {
         let mut state = Self {
             nmi_on: true,
@@ -64,8 +62,8 @@ impl GameplayState {
             fall_timer: 0,
             game_mode_state: GameModeState::HandleGameplay,
             drop_autorepeat: -96,
-            current_piece: first_piece,
-            next_piece: second_piece,
+            current_piece: Piece::None,
+            next_piece: Piece::None,
             rendered_row_counter: 0,
             line_count: match game_type {
                 GameType::A => 0,
@@ -83,6 +81,11 @@ impl GameplayState {
             frame_counter: frame_counter,
             paused: false,
         };
+
+        state.random.cycle();
+        state.current_piece = state.random.get_piece();
+        state.random.cycle();
+        state.next_piece = state.random.get_piece();
 
         if game_type == GameType::B {
             state.initialize_type_b_tiles(b_type_height);
