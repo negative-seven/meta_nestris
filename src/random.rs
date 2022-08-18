@@ -73,7 +73,7 @@ impl Random {
             PIECE_TABLE[usize::from(index)]
         }
 
-        self.piece_counter = u8::wrapping_add(self.piece_counter, 1);
+        self.piece_counter = (self.piece_counter + 1) % 8;
         let mut piece_index = u8::wrapping_add(self.get_value(), self.piece_counter) % 8;
         if (piece_index as usize) >= PIECE_TABLE.len() || get_piece(piece_index) == self.last_piece {
             self.index += 1;
