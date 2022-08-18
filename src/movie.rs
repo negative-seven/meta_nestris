@@ -36,6 +36,6 @@ impl Movie {
             }
         }
 
-        return Ok(Movie { inputs });
+        Ok(Movie { inputs })
     }
 }

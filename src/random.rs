@@ -51,11 +51,11 @@ impl Random {
                     let new_bit = ((current >> 9) ^ (current >> 1)) & 1;
                     current = (new_bit << 15) | (current >> 1);
                 }
-                return values;
+                values
             };
         }
 
-        return RNG_VALUES[usize::from(self.index)];
+        RNG_VALUES[usize::from(self.index)]
     }
 
     pub fn get_piece(&mut self) -> Piece {
@@ -82,6 +82,6 @@ impl Random {
 
         self.last_piece = get_piece(piece_index);
 
-        return self.last_piece;
+        self.last_piece
     }
 }

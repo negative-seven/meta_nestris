@@ -8,7 +8,7 @@ fn get_last_state(movie_filepath: &PathBuf) -> State {
     for input in movie.inputs {
         state.step(input);
     }
-    return state;
+    state
 }
 
 fn reach_game_mode(directory: &str, target_menu_mode: MenuMode) {
