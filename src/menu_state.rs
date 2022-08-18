@@ -10,7 +10,6 @@ pub struct MenuState {
     pub delay_timer: u16,
     pub change_to_gameplay_state: bool,
     pub menu_mode: MenuMode,
-    pub initialize_tiles_for_b_type: bool,
     pub copyright_skip_timer: u8,
     pub previous_input: Input,
     pub random: Random,
@@ -25,9 +24,6 @@ pub struct MenuState {
 }
 
 impl MenuState {
-    const B_TYPE_HEIGHTS: [u8; 6] = [20, 17, 15, 12, 10, 8];
-    const B_TYPE_RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
-
     pub fn new() -> Self {
         let mut random = Random::new();
         random.cycle_multiple(263);
@@ -45,7 +41,6 @@ impl MenuState {
             copyright_skip_timer: 0xff,
             delay_timer: 268,
             change_to_gameplay_state: false,
-            initialize_tiles_for_b_type: false,
             current_piece: Piece::TUp,
             next_piece: Piece::TUp,
             tiles: BitArray::ZERO,
@@ -68,13 +63,6 @@ impl MenuState {
             }
         }
 
-        if self.initialize_tiles_for_b_type {
-            self.initialize_type_b_tiles();
-            self.initialize_tiles_for_b_type = false;
-            self.previous_input = input.clone();
-            return None;
-        }
-
         if self.change_to_gameplay_state {
             return Some(GameplayState::new(
                 &self.random,
@@ -82,6 +70,7 @@ impl MenuState {
                 self.previous_input,
                 self.game_type,
                 self.selected_level,
+                self.selected_height,
                 &self.tiles,
                 self.current_piece,
                 self.next_piece,
@@ -92,14 +81,6 @@ impl MenuState {
         self.previous_input = input.clone();
 
         None
-    }
-
-    pub fn get_tile(&self, x: usize, y: usize) -> bool {
-        self.tiles[y * 10 + x]
-    }
-
-    fn set_tile(&mut self, x: usize, y: usize, tile: bool) {
-        self.tiles.set(y * 10 + x, tile);
     }
 
     fn step_main_logic(&mut self, input: Input) {
@@ -222,39 +203,10 @@ impl MenuState {
                 self.delay_timer = 1;
             }
             GameType::B => {
-                self.initialize_tiles_for_b_type = true;
+                self.delay_timer = 13;
             }
         }
         self.nmi_on = false;
         self.change_to_gameplay_state = true;
-    }
-
-    fn initialize_type_b_tiles(&mut self) {
-        for y in 8..20 {
-            self.random.cycle();
-
-            // place tiles randomly
-            for x in (0..10).rev() {
-                self.random.cycle();
-                self.set_tile(
-                    x,
-                    y,
-                    Self::B_TYPE_RNG_TABLE[(self.random.get_value() % 8) as usize],
-                );
-            }
-
-            // guarantee a hole in the row
-            self.random.cycle_do_while(|v| v % 16 >= 10);
-            let x = usize::from(self.random.get_value() % 16);
-            self.set_tile(x, y, false);
-        }
-
-        // behavior from the base game: one additional tile (leftmost tile of the highest garbage row)
-        // is also cleared
-        let tiles_to_clear =
-            usize::from(Self::B_TYPE_HEIGHTS[usize::from(self.selected_height)]) * 10 + 1;
-        self.tiles[..tiles_to_clear].fill(false);
-
-        self.delay_timer = 12;
     }
 }

@@ -34,6 +34,8 @@ pub struct GameplayState {
 }
 
 impl GameplayState {
+    const B_TYPE_HEIGHTS: [u8; 6] = [20, 17, 15, 12, 10, 8];
+    const B_TYPE_RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
     const LEVEL_MAXIMUM_DROP_TIMES: [u8; 29] = [
         48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
         2,
@@ -46,11 +48,12 @@ impl GameplayState {
         previous_input: Input,
         game_type: GameType,
         level: u8,
+        b_type_height: u8,
         tiles: &BitArr!(for 0x100),
         first_piece: Piece,
         second_piece: Piece,
     ) -> Self {
-        Self {
+        let mut state = Self {
             nmi_on: true,
             dead: false,
             previous_input: previous_input,
@@ -79,7 +82,13 @@ impl GameplayState {
             update_lines_delay: 0,
             frame_counter: frame_counter,
             paused: false,
+        };
+
+        if game_type == GameType::B {
+            state.initialize_type_b_tiles(b_type_height);
         }
+
+        state
     }
 
     pub fn get_tile(&self, x: usize, y: usize) -> bool {
@@ -456,5 +465,31 @@ impl GameplayState {
             0
         };
         self.rendered_row_counter = u8::min(self.rendered_row_counter, highest_row_to_update);
+    }
+
+    fn initialize_type_b_tiles(&mut self, height_index: u8) {
+        for y in 8..20 {
+            self.random.cycle();
+
+            // place tiles randomly
+            for x in (0..10).rev() {
+                self.random.cycle();
+                self.set_tile(
+                    x,
+                    y,
+                    Self::B_TYPE_RNG_TABLE[(self.random.get_value() % 8) as usize],
+                );
+            }
+
+            // guarantee a hole in the row
+            self.random.cycle_do_while(|v| v % 16 >= 10);
+            let x = usize::from(self.random.get_value() % 16);
+            self.set_tile(x, y, false);
+        }
+
+        // behavior from the base game: one additional tile (leftmost tile of the highest garbage row)
+        // is also cleared
+        let tiles_to_clear = usize::from(Self::B_TYPE_HEIGHTS[usize::from(height_index)]) * 10 + 1;
+        self.tiles[..tiles_to_clear].fill(false);
     }
 }
