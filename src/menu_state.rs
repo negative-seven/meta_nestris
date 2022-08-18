@@ -2,7 +2,6 @@ use crate::{
     game_type::GameType, gameplay_state::GameplayState, input::Input, menu_mode::MenuMode,
     random::Random,
 };
-use bitvec::prelude::*;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct MenuState {
@@ -16,7 +15,6 @@ pub struct MenuState {
     pub frame_counter: u8,
     pub selecting_height: bool,
     pub game_type: GameType,
-    pub tiles: BitArr!(for 0x100),
     pub selected_level: u8,
     pub selected_height: u8,
 }
@@ -39,7 +37,6 @@ impl MenuState {
             copyright_skip_timer: 0xff,
             delay_timer: 268,
             change_to_gameplay_state: false,
-            tiles: BitArray::ZERO,
         }
     }
 
@@ -67,7 +64,6 @@ impl MenuState {
                 self.game_type,
                 self.selected_level,
                 self.selected_height,
-                &self.tiles,
             ));
         }
 

@@ -49,7 +49,6 @@ impl GameplayState {
         game_type: GameType,
         level: u8,
         b_type_height: u8,
-        tiles: &BitArr!(for 0x100),
     ) -> Self {
         let mut state = Self {
             nmi_on: true,
@@ -71,7 +70,7 @@ impl GameplayState {
             },
             play_state: PlayState::MoveTetrimino,
             shift_autorepeat: 0,
-            tiles: tiles.clone(),
+            tiles: BitArray::ZERO,
             level,
             hold_down_points: 0,
             checked_row_offset: 0,
