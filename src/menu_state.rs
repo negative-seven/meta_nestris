@@ -7,21 +7,21 @@ use bitvec::prelude::*;
 #[derive(Clone, Eq, PartialEq)]
 pub struct MenuState {
     pub nmi_on: bool,
-    pub previous_input: Input,
-    pub random: Random,
-    pub menu_mode: MenuMode,
-    pub game_type: GameType,
-    pub frame_counter: u8,
-    pub selecting_height: bool,
-    pub selected_level: u8,
-    pub selected_height: u8,
-    pub copyright_skip_timer: u8,
     pub delay_timer: u16,
     pub change_to_gameplay_state: bool,
+    pub menu_mode: MenuMode,
     pub initialize_tiles_for_b_type: bool,
+    pub copyright_skip_timer: u8,
+    pub previous_input: Input,
+    pub random: Random,
+    pub frame_counter: u8,
+    pub selecting_height: bool,
+    pub game_type: GameType,
+    pub tiles: BitArr!(for 0x100),
+    pub selected_level: u8,
+    pub selected_height: u8,
     pub current_piece: Piece,
     pub next_piece: Piece,
-    pub tiles: BitArr!(for 0x100),
 }
 
 impl MenuState {
@@ -231,7 +231,6 @@ impl MenuState {
 
     fn initialize_type_b_tiles(&mut self) {
         for y in 8..20 {
-            self.frame_counter = (self.frame_counter + 1) % 4;
             self.random.cycle();
 
             // place tiles randomly

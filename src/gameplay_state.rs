@@ -8,35 +8,35 @@ use bitvec::prelude::*;
 pub struct GameplayState {
     pub nmi_on: bool,
     pub dead: bool,
+    pub paused: bool,
+    pub game_mode_state: GameModeState,
+    pub play_state: PlayState,
+    pub checked_row_offset: u8,
+    pub update_lines_delay: u8,
     pub previous_input: Input,
-    pub score: u32,
     pub random: Random,
+    pub frame_counter: u8,
+    pub rendered_row_counter: u8,
+    pub cleared_lines: u8,
     pub current_piece_x: i8,
     pub current_piece_y: i8,
+    pub hold_down_points: u8,
     pub fall_timer: u8,
-    pub game_mode_state: GameModeState,
-    pub fall_autorepeat: i8,
+    pub drop_autorepeat: i8,
+    pub shift_autorepeat: u8,
+    pub game_type: GameType,
+    pub tiles: BitArr!(for 0x100),
     pub current_piece: Piece,
     pub next_piece: Piece,
-    pub rendered_row_counter: u8,
-    pub line_count: u16,
-    pub play_state: PlayState,
-    pub shift_autorepeat: u8,
-    pub tiles: BitArr!(for 0x100),
+    pub score: u32,
     pub level: u8,
-    pub hold_down_points: u8,
-    pub checked_row_offset: u8,
-    pub cleared_lines: u8,
-    pub game_type: GameType,
-    pub update_lines_delay: u8,
-    pub frame_counter: u8,
-    pub paused: bool,
+    pub line_count: u16,
 }
 
 impl GameplayState {
-    const LEVEL_MAXIMUM_DROP_TIMES: [u8; 30] = [
+    const LEVEL_MAXIMUM_DROP_TIMES: [u8; 29] = [
         48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2, 1,
+        2,
     ];
     const LINE_CLEAR_POINTS: [u16; 5] = [0, 40, 100, 300, 1200];
 
@@ -60,7 +60,7 @@ impl GameplayState {
             current_piece_y: 0,
             fall_timer: 0,
             game_mode_state: GameModeState::HandleGameplay,
-            fall_autorepeat: -96,
+            drop_autorepeat: -96,
             current_piece: first_piece,
             next_piece: second_piece,
             rendered_row_counter: 0,
@@ -309,7 +309,7 @@ impl GameplayState {
         self.current_piece_x = 5;
         self.current_piece = self.next_piece;
         self.next_piece = self.random.get_piece();
-        self.fall_autorepeat = 0;
+        self.drop_autorepeat = 0;
     }
 
     fn try_shift_piece(&mut self, input: Input) {
@@ -389,33 +389,33 @@ impl GameplayState {
 
     fn try_drop_piece(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
-        if self.fall_autorepeat < 0 {
+        if self.drop_autorepeat < 0 {
             if !pressed_input.get(Input::Down) {
-                self.fall_autorepeat += 1;
+                self.drop_autorepeat += 1;
                 return;
             }
-            self.fall_autorepeat = 0;
+            self.drop_autorepeat = 0;
         }
 
-        if self.fall_autorepeat == 0 && !input.get(Input::Left) && !input.get(Input::Right) {
+        if self.drop_autorepeat == 0 && !input.get(Input::Left) && !input.get(Input::Right) {
             if pressed_input.get(Input::Down)
                 && !pressed_input.get(Input::Left)
                 && !pressed_input.get(Input::Right)
                 && !pressed_input.get(Input::Up)
             {
-                self.fall_autorepeat = 1;
+                self.drop_autorepeat = 1;
             }
         } else if !(input.get(Input::Down)
             && !input.get(Input::Left)
             && !input.get(Input::Right)
             && !input.get(Input::Up))
         {
-            self.fall_autorepeat = 0;
+            self.drop_autorepeat = 0;
             self.hold_down_points = 0;
-        } else if self.fall_autorepeat != 0 {
-            self.fall_autorepeat += 1;
-            if self.fall_autorepeat >= 3 {
-                self.fall_autorepeat = 1;
+        } else if self.drop_autorepeat != 0 {
+            self.drop_autorepeat += 1;
+            if self.drop_autorepeat >= 3 {
+                self.drop_autorepeat = 1;
                 self.hold_down_points += 1;
 
                 self.fall_timer = 0;
@@ -431,7 +431,7 @@ impl GameplayState {
             }
         }
 
-        let frames_per_drop = if self.level < 0x1d {
+        let frames_per_drop = if usize::from(self.level) < Self::LEVEL_MAXIMUM_DROP_TIMES.len() {
             Self::LEVEL_MAXIMUM_DROP_TIMES[self.level as usize]
         } else {
             1
