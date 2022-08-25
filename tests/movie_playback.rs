@@ -32,18 +32,17 @@ where
         LevelSelect,
         InitializingGame,
     }
-    
+
     #[derive(Deserialize)]
     struct MenuModeWrapper(#[serde(with = "MenuModeDuplicate")] MenuMode);
 
-    let helper = Option::deserialize(deserializer)?;
-    Ok(helper.map(|MenuModeWrapper(external)| external))
+    Ok(Option::deserialize(deserializer)?.map(|MenuModeWrapper(menu_mode)| menu_mode))
 }
 
 #[test]
 fn movie_playback() {
     let metadata_json: Vec<MovieData> =
-        serde_json::from_reader(File::open("tests/movies/metadata.json").unwrap()).unwrap();
+        serde_yaml::from_reader(File::open("tests/movies/metadata.yaml").unwrap()).unwrap();
 
     for movie_data in metadata_json {
         // may need to play movie beyond final stored input
