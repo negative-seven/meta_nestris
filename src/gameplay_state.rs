@@ -69,7 +69,7 @@ impl GameplayState {
                 GameType::B => 25,
             },
             play_state: PlayState::MoveTetrimino,
-            shift_autorepeat: 0,
+            shift_autorepeat: 15,
             tiles: BitArray::ZERO,
             level,
             hold_down_points: 0,
@@ -334,13 +334,14 @@ impl GameplayState {
                 return;
             }
 
-            self.shift_autorepeat += 1;
-            if self.shift_autorepeat < 16 {
+            if self.shift_autorepeat == 0 {
+                self.shift_autorepeat = 5;
+            } else {
+                self.shift_autorepeat -= 1;
                 return;
             }
-            self.shift_autorepeat = 10;
         } else {
-            self.shift_autorepeat = 0;
+            self.shift_autorepeat = 15;
         }
 
         let new_piece_x;
@@ -353,7 +354,7 @@ impl GameplayState {
         }
 
         if !self.try_set_piece_and_position(self.current_piece, new_piece_x, self.current_piece_y) {
-            self.shift_autorepeat = 16;
+            self.shift_autorepeat = 0;
         }
     }
 
