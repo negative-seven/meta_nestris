@@ -327,31 +327,32 @@ impl GameplayState {
         if input.get(Input::Down) {
             return;
         }
+        if !input.get(Input::Left) && !input.get(Input::Right) {
+            return;
+        }
 
         let pressed_input = input.difference(self.previous_input);
-        if pressed_input & (Input::Left | Input::Right) == 0 {
-            if input & (Input::Left | Input::Right) == 0 {
-                return;
-            }
-
+        if pressed_input.get(Input::Left) || pressed_input.get(Input::Right) {
+            // try to shift piece immediately, but set autorepeat timer to high value
+            // note that this can be triggered on two consecutive frames with left/right followed by left+right
+            self.shift_autorepeat = 15;
+        } else {
+            // check autorepeat timer
             if self.shift_autorepeat == 0 {
+                // elapsed; try to shift piece
                 self.shift_autorepeat = 5;
             } else {
+                // not elapsed; decrement and don't try to shift piece
                 self.shift_autorepeat -= 1;
                 return;
             }
-        } else {
-            self.shift_autorepeat = 15;
         }
 
-        let new_piece_x;
-        if input.get(Input::Right) {
-            new_piece_x = self.current_piece_x + 1;
-        } else if input.get(Input::Left) {
-            new_piece_x = self.current_piece_x - 1;
+        let new_piece_x = if input.get(Input::Right) {
+            self.current_piece_x + 1 // right held or left + right held
         } else {
-            return;
-        }
+            self.current_piece_x - 1 // left held
+        };
 
         if !self.try_set_piece_and_position(self.current_piece, new_piece_x, self.current_piece_y) {
             self.shift_autorepeat = 0;
