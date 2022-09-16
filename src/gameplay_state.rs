@@ -1,3 +1,5 @@
+use std::convert::TryInto;
+
 use crate::{
     game_mode_state::GameModeState, game_type::GameType, input::Input, piece::Piece,
     play_state::PlayState, random::Random,
@@ -346,17 +348,30 @@ impl GameplayState {
 
     fn try_set_piece_and_position(&mut self, piece: Piece, x: i8, y: i8) -> bool {
         for (tile_offset_x, tile_offset_y) in piece.get_tile_offsets() {
-            let tile_x = x + tile_offset_x;
-            let tile_y = y + tile_offset_y;
-            if tile_x < 0 || tile_x >= 10 || tile_y >= 20 {
+            let signed_tile_x = x + tile_offset_x;
+            let signed_tile_y = y + tile_offset_y;
+            if signed_tile_x < 0 || signed_tile_x >= 10 || signed_tile_y >= 20 {
                 return false;
             }
 
-            let index = i16::from(*tile_offset_x)
-                + i16::from(*tile_offset_y * 10)
-                + i16::from(y as u8) * 10
-                + i16::from(x as u8); // a raw index is calculated because tile_y can be negative
-            if self.get_tile((index as u8 % 10).into(), (index as u8 / 10).into()) {
+            let mut tile_x;
+            let mut tile_y;
+            if signed_tile_y >= 0 {
+                // both coordinates are guaranteed to be non-negative here due to earlier checks
+                tile_x = signed_tile_x.try_into().unwrap();
+                tile_y = signed_tile_y.try_into().unwrap();
+            } else {
+                // signed_tile_y < 0 causes strange indexing due to 8-bit integer overflow
+                // e.g.: tile 9 of row -1 ends up being indexed as tile 5 of row 25
+                tile_x = signed_tile_x as usize + 6; // signed_tile_x is guaranteed to be non-negative here due to earlier check
+                tile_y = (signed_tile_y + 25) as usize; // signed_tile_y is guaranteed to be >= -2 because y >= 0 and tile_offset_y >= -2
+                if tile_x >= 10 {
+                    tile_x -= 10;
+                    tile_y += 1;
+                }
+            }
+
+            if self.get_tile(tile_x, tile_y) {
                 return false;
             }
         }
