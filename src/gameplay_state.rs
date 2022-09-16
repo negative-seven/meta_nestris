@@ -53,7 +53,7 @@ impl GameplayState {
         let mut state = Self {
             nmi_on: true,
             dead: false,
-            previous_input: previous_input,
+            previous_input,
             score: 0,
             random: random.clone(),
             current_piece_x: 5,
@@ -75,9 +75,9 @@ impl GameplayState {
             hold_down_points: 0,
             checked_row_offset: 0,
             cleared_lines: 0,
-            game_type: game_type,
+            game_type,
             update_lines_delay: 0,
-            frame_counter: frame_counter,
+            frame_counter,
             paused: false,
         };
 
@@ -115,7 +115,6 @@ impl GameplayState {
                             self.play_state = PlayState::UpdateLinesAndStatistics;
                         }
                     }
-                    self.rendered_row_counter = 0;
                 } else {
                     if self.rendered_row_counter < 20 {
                         self.rendered_row_counter += 4;
@@ -253,16 +252,8 @@ impl GameplayState {
             number + 6 * (number / 10)
         }
 
-        fn from_bcd(number: u16) -> u16 {
-            let mut result = 0;
-            let mut shifted_number = number;
-            let mut multiplier = 1;
-            while shifted_number > 0 {
-                result += (shifted_number % 16) * multiplier;
-                shifted_number >>= 4;
-                multiplier *= 10;
-            }
-            result
+        fn from_bcd(number: u8) -> u8 {
+            (number / 16) * 10 + (number % 16)
         }
 
         match self.game_type {
@@ -290,23 +281,19 @@ impl GameplayState {
 
         if self.hold_down_points >= 2 {
             // buggy score addition logic from base game
-            let low_digits = from_bcd(
-                u16::from(to_bcd((self.score % 100) as u8)) + u16::from(self.hold_down_points - 1),
-            );
-            self.score -= self.score % 100;
+            let low_digits = from_bcd(to_bcd((self.score % 100) as u8) + self.hold_down_points - 1);
+            self.score = self.score / 100 * 100;
             self.score += u32::from(low_digits);
             if low_digits >= 100 {
-                self.score -= self.score % 10;
+                self.score = self.score / 10 * 10;
             }
         }
         self.hold_down_points = 0;
 
-        if self.cleared_lines != 0 {
-            self.score += u32::from(Self::LINE_CLEAR_POINTS[self.cleared_lines as usize])
-                * u32::from(self.level + 1);
-        }
-
+        self.score += u32::from(Self::LINE_CLEAR_POINTS[self.cleared_lines as usize])
+            * u32::from(self.level + 1);
         self.cleared_lines = 0;
+
         self.play_state = PlayState::Wait2UntilSpawnNextTetrimino;
     }
 
@@ -333,19 +320,17 @@ impl GameplayState {
 
         let pressed_input = input.difference(self.previous_input);
         if pressed_input.get(Input::Left) || pressed_input.get(Input::Right) {
-            // try to shift piece immediately, but set autorepeat timer to high value
+            // new left/right press; try to shift piece immediately, but set autorepeat timer to high value
             // note that this can be triggered on two consecutive frames with left/right followed by left+right
+            // this allows for two movements to the right on two consecutive frames
             self.shift_autorepeat = 15;
+        } else if self.shift_autorepeat == 0 {
+            // autorepeat timer elapsed; try to shift piece
+            self.shift_autorepeat = 5;
         } else {
-            // check autorepeat timer
-            if self.shift_autorepeat == 0 {
-                // elapsed; try to shift piece
-                self.shift_autorepeat = 5;
-            } else {
-                // not elapsed; decrement and don't try to shift piece
-                self.shift_autorepeat -= 1;
-                return;
-            }
+            // autorepeat timer not elapsed; decrement and don't try to shift piece
+            self.shift_autorepeat -= 1;
+            return;
         }
 
         let new_piece_x = if input.get(Input::Right) {
@@ -367,11 +352,11 @@ impl GameplayState {
                 return false;
             }
 
-            let y = i16::from(*tile_offset_x)
+            let index = i16::from(*tile_offset_x)
                 + i16::from(*tile_offset_y * 10)
                 + i16::from(y as u8) * 10
-                + i16::from(x as u8);
-            if self.get_tile((y as u8 % 10).into(), (y as u8 / 10).into()) {
+                + i16::from(x as u8); // a raw index is calculated because tile_y can be negative
+            if self.get_tile((index as u8 % 10).into(), (index as u8 / 10).into()) {
                 return false;
             }
         }
@@ -383,15 +368,14 @@ impl GameplayState {
     }
 
     fn try_rotate_piece(&mut self, input: Input) {
-        let new_piece_rotation;
         let pressed_input = input.difference(self.previous_input);
-        if pressed_input.get(Input::A) {
-            new_piece_rotation = self.current_piece.get_clockwise_rotation();
+        let new_piece_rotation = if pressed_input.get(Input::A) {
+            self.current_piece.get_clockwise_rotation()
         } else if pressed_input.get(Input::B) {
-            new_piece_rotation = self.current_piece.get_counterclockwise_rotation();
+            self.current_piece.get_counterclockwise_rotation()
         } else {
             return;
-        }
+        };
 
         self.try_set_piece_and_position(
             new_piece_rotation,
