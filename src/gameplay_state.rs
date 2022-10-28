@@ -8,7 +8,6 @@ use bitvec::prelude::*;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct GameplayState {
-    pub nmi_on: bool,
     pub dead: bool,
     pub paused: bool,
     pub game_mode_state: GameModeState,
@@ -49,7 +48,6 @@ impl GameplayState {
         b_type_height: u8,
     ) -> Self {
         let mut state = Self {
-            nmi_on: true,
             dead: false,
             previous_input,
             score: 0,
@@ -117,39 +115,35 @@ impl GameplayState {
             return;
         }
 
-        if self.nmi_on {
-            if !self.paused {
-                if self.play_state == PlayState::DoNothing {
-                    if self.frame_counter == 0 {
-                        self.update_lines_delay -= 1;
-                        if self.update_lines_delay == 0 {
-                            self.play_state = PlayState::UpdateLinesAndStatistics;
-                        }
-                    }
-                } else {
-                    if self.rendered_row_counter < 20 {
-                        self.rendered_row_counter += 4;
-                    }
-                }
-            }
-
-            self.frame_counter = (self.frame_counter + 1) % 4;
-            self.random.cycle();
-        }
+        self.frame_counter = (self.frame_counter + 1) % 4;
+        self.random.cycle();
 
         if self.paused {
             if input.difference(self.previous_input) == Input::Start {
+                // unpause
                 self.rendered_row_counter = 0;
                 self.game_mode_state = GameModeState::Unpause;
                 self.paused = false;
             }
-            if self.paused {
-                self.previous_input = input.clone();
-                return;
+        } else {
+            if self.play_state == PlayState::DoNothing {
+                if self.frame_counter == 1 {
+                    self.update_lines_delay -= 1;
+                    if self.update_lines_delay == 0 {
+                        self.play_state = PlayState::UpdateLinesAndStatistics;
+                    }
+                }
+            } else {
+                if self.rendered_row_counter < 20 {
+                    self.rendered_row_counter += 4;
+                }
             }
         }
 
-        self.step_main_logic(input);
+        if !self.paused {
+            self.step_main_logic(input);
+        }
+
         self.previous_input = input.clone();
     }
 
@@ -410,7 +404,7 @@ impl GameplayState {
 
     fn try_drop_piece(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
-        
+
         if self.drop_autorepeat < 0 {
             // handle initial piece delay
             if pressed_input.get(Input::Down) {
