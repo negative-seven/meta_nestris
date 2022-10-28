@@ -38,10 +38,6 @@ pub struct GameplayState {
 impl GameplayState {
     const B_TYPE_HEIGHTS: [u8; 6] = [20, 17, 15, 12, 10, 8];
     const B_TYPE_RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
-    const LEVEL_MAXIMUM_DROP_TIMES: [u8; 29] = [
-        48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2, 2, 2,
-        2,
-    ];
     const LINE_CLEAR_POINTS: [u16; 5] = [0, 40, 100, 300, 1200];
 
     pub fn new(
@@ -101,6 +97,19 @@ impl GameplayState {
 
     fn set_tile(&mut self, x: usize, y: usize, tile: bool) {
         self.tiles.set(y * 10 + x, tile);
+    }
+
+    fn get_automatic_drop_delay(&self) -> u8 {
+        const LEVEL_DELAYS: [u8; 29] = [
+            48, 43, 38, 33, 28, 23, 18, 13, 8, 6, 5, 5, 5, 4, 4, 4, 3, 3, 3, 2, 2, 2, 2, 2, 2, 2,
+            2, 2, 2,
+        ];
+
+        if usize::from(self.level) < LEVEL_DELAYS.len() {
+            LEVEL_DELAYS[self.level as usize]
+        } else {
+            1
+        }
     }
 
     pub fn step(&mut self, input: Input) {
@@ -401,54 +410,61 @@ impl GameplayState {
 
     fn try_drop_piece(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
+        
         if self.drop_autorepeat < 0 {
-            if !pressed_input.get(Input::Down) {
+            // handle initial piece delay
+            if pressed_input.get(Input::Down) {
+                // end initial piece delay
+                self.drop_autorepeat = 0;
+            } else {
+                // increment delay timer and leave
                 self.drop_autorepeat += 1;
                 return;
             }
-            self.drop_autorepeat = 0;
         }
 
-        if self.drop_autorepeat == 0 && !input.get(Input::Left) && !input.get(Input::Right) {
+        let mut drop = false;
+
+        if self.drop_autorepeat == 0 {
+            // pushdown not in progress
             if pressed_input.get(Input::Down)
-                && !pressed_input.get(Input::Left)
-                && !pressed_input.get(Input::Right)
+                && !input.get(Input::Left)
+                && !input.get(Input::Right)
                 && !pressed_input.get(Input::Up)
             {
+                // begin manual pushdown
+                // note: the first drop takes a frame longer than subsequent drops
                 self.drop_autorepeat = 1;
             }
-        } else if !(input.get(Input::Down)
-            && !input.get(Input::Left)
-            && !input.get(Input::Right)
-            && !input.get(Input::Up))
-        {
-            self.drop_autorepeat = 0;
-            self.hold_down_points = 0;
-        } else if self.drop_autorepeat != 0 {
-            self.drop_autorepeat += 1;
-            if self.drop_autorepeat >= 3 {
-                self.drop_autorepeat = 1;
-                self.hold_down_points += 1;
+        } else {
+            // pushdown in progress
+            if input.get(Input::Down)
+                && !input.get(Input::Left)
+                && !input.get(Input::Right)
+                && !input.get(Input::Up)
+            {
+                // continue manual pushdown
+                self.drop_autorepeat += 1;
+                if self.drop_autorepeat >= 3 {
+                    // manual drop
+                    self.drop_autorepeat = 1;
+                    self.hold_down_points += 1;
 
-                self.fall_timer = 0;
-                if !self.try_set_piece_and_position(
-                    self.current_piece,
-                    self.current_piece_x,
-                    self.current_piece_y + 1,
-                ) {
-                    self.play_state = PlayState::LockTetrimino;
-                    self.update_rendered_row_counter();
+                    drop = true;
                 }
-                return;
+            } else {
+                // cancel manual pushdown
+                self.drop_autorepeat = 0;
+                self.hold_down_points = 0;
             }
         }
 
-        let frames_per_drop = if usize::from(self.level) < Self::LEVEL_MAXIMUM_DROP_TIMES.len() {
-            Self::LEVEL_MAXIMUM_DROP_TIMES[self.level as usize]
-        } else {
-            1
-        };
-        if self.fall_timer >= frames_per_drop {
+        if !drop && self.fall_timer >= self.get_automatic_drop_delay() {
+            // automatic periodic drop
+            drop = true;
+        }
+
+        if drop {
             self.fall_timer = 0;
             if !self.try_set_piece_and_position(
                 self.current_piece,
