@@ -5,7 +5,5 @@ pub enum PlayState {
     CheckForCompletedRows,
     DoNothing,
     UpdateLinesAndStatistics,
-    Wait2UntilSpawnNextTetrimino,
-    Wait1UntilSpawnNextTetrimino,
     SpawnNextTetrimino,
 }

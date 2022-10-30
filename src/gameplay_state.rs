@@ -32,6 +32,7 @@ pub struct GameplayState {
     pub score: u32,
     pub level: u8,
     pub line_count: u16,
+    pub play_state_delay: u8,
 }
 
 impl GameplayState {
@@ -75,6 +76,7 @@ impl GameplayState {
             update_lines_delay: 0,
             frame_counter,
             paused: false,
+            play_state_delay: 0,
         };
 
         state.random.cycle();
@@ -150,7 +152,11 @@ impl GameplayState {
     fn step_main_logic(&mut self, input: Input) {
         if self.game_mode_state == GameModeState::HandleGameplay {
             self.fall_timer += 1;
-            self.run_play_state_operation(input);
+            if self.play_state_delay > 0 {
+                self.play_state_delay -= 1;
+            } else {
+                self.run_play_state_operation(input);
+            }
             self.game_mode_state = GameModeState::HandleStartButton;
 
             if self.dead || input == Input::Right | Input::Left | Input::Down
@@ -180,12 +186,6 @@ impl GameplayState {
             PlayState::CheckForCompletedRows => self.check_if_row_completed(),
             PlayState::DoNothing => (),
             PlayState::UpdateLinesAndStatistics => self.update_score_and_line_count(),
-            PlayState::Wait2UntilSpawnNextTetrimino => {
-                self.play_state = PlayState::Wait1UntilSpawnNextTetrimino;
-            }
-            PlayState::Wait1UntilSpawnNextTetrimino => {
-                self.play_state = PlayState::SpawnNextTetrimino;
-            }
             PlayState::SpawnNextTetrimino => self.spawn_next_piece(),
         }
     }
@@ -299,7 +299,8 @@ impl GameplayState {
             * u32::from(self.level + 1);
         self.cleared_lines = 0;
 
-        self.play_state = PlayState::Wait2UntilSpawnNextTetrimino;
+        self.play_state = PlayState::SpawnNextTetrimino;
+        self.play_state_delay = 2;
     }
 
     fn spawn_next_piece(&mut self) {
