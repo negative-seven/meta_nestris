@@ -1,5 +1,5 @@
 use crate::input::Input;
-use lazy_static::lazy_static;
+use once_cell::sync::Lazy;
 use regex::Regex;
 use std::{
     error::Error,
@@ -14,9 +14,7 @@ pub struct Movie {
 
 impl Movie {
     pub fn from_fm2(path: &PathBuf) -> Result<Self, Box<dyn Error>> {
-        lazy_static! {
-            static ref REGEX_INPUT: Regex = Regex::new(r"^\|\d+\|([^|]{8})\|").unwrap();
-        }
+        static REGEX_INPUT: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\|\d+\|([^|]{8})\|").unwrap());
 
         let file = File::open(path)?;
         let lines = BufReader::new(file)

@@ -1,5 +1,6 @@
+use once_cell::sync::Lazy;
+
 use crate::piece::Piece;
-use lazy_static::lazy_static;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct Random {
@@ -40,20 +41,18 @@ impl Random {
     }
 
     pub fn get_value(&self) -> u8 {
-        lazy_static! {
-            static ref RNG_VALUES: [u8; Random::RNG_STATES_COUNT as usize] = {
-                let mut values = [0; Random::RNG_STATES_COUNT as usize];
+        static RNG_VALUES: Lazy<[u8; Random::RNG_STATES_COUNT as usize]> = Lazy::new(|| {
+            let mut values = [0; Random::RNG_STATES_COUNT as usize];
 
-                let mut current: u16 = 0x8988;
-                for i in 0..values.len() {
-                    values[i] = (current >> 8) as u8;
+            let mut current: u16 = 0x8988;
+            for i in 0..values.len() {
+                values[i] = (current >> 8) as u8;
 
-                    let new_bit = ((current >> 9) ^ (current >> 1)) & 1;
-                    current = (new_bit << 15) | (current >> 1);
-                }
-                values
-            };
-        }
+                let new_bit = ((current >> 9) ^ (current >> 1)) & 1;
+                current = (new_bit << 15) | (current >> 1);
+            }
+            values
+        });
 
         RNG_VALUES[usize::from(self.index)]
     }
@@ -75,7 +74,8 @@ impl Random {
 
         self.piece_counter = (self.piece_counter + 1) % 8;
         let mut piece_index = u8::wrapping_add(self.get_value(), self.piece_counter) % 8;
-        if (piece_index as usize) >= PIECE_TABLE.len() || get_piece(piece_index) == self.last_piece {
+        if (piece_index as usize) >= PIECE_TABLE.len() || get_piece(piece_index) == self.last_piece
+        {
             self.cycle();
             piece_index = ((self.get_value() % 8) + self.last_piece.to_id()) % 7;
         }
