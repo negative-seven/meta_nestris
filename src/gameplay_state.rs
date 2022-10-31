@@ -17,7 +17,7 @@ pub struct GameplayState {
     pub previous_input: Input,
     pub random: Random,
     pub frame_counter: u8,
-    pub rendered_row_counter: u8,
+    pub rendering_delay: u8,
     pub cleared_lines: u8,
     pub current_piece_x: i8,
     pub current_piece_y: i8,
@@ -60,7 +60,7 @@ impl GameplayState {
             drop_autorepeat: -96,
             current_piece: Piece::None,
             next_piece: Piece::None,
-            rendered_row_counter: 0,
+            rendering_delay: 0,
             line_count: match game_type {
                 GameType::A => 0,
                 GameType::B => 25,
@@ -123,7 +123,7 @@ impl GameplayState {
         if self.paused {
             if input.difference(self.previous_input) == Input::Start {
                 // unpause
-                self.rendered_row_counter = 0;
+                self.rendering_delay = 0;
                 self.game_mode_state = GameModeState::Unpause;
                 self.paused = false;
             }
@@ -136,8 +136,8 @@ impl GameplayState {
                     }
                 }
             } else {
-                if self.rendered_row_counter < 20 {
-                    self.rendered_row_counter += 4;
+                if self.rendering_delay < 5 {
+                    self.rendering_delay += 1;
                 }
             }
         }
@@ -200,7 +200,7 @@ impl GameplayState {
             return;
         }
 
-        if self.rendered_row_counter >= 20 {
+        if self.rendering_delay >= 5 {
             for (tile_offset_x, tile_offset_y) in self.current_piece.get_tile_offsets() {
                 let x = i16::from(self.current_piece_x) + i16::from(*tile_offset_x);
                 let y = i16::from(self.current_piece_y) + i16::from(*tile_offset_y);
@@ -215,7 +215,7 @@ impl GameplayState {
     }
 
     fn check_if_row_completed(&mut self) {
-        if self.rendered_row_counter < 20 {
+        if self.rendering_delay < 5 {
             return;
         }
 
@@ -243,7 +243,7 @@ impl GameplayState {
 
         self.checked_row_offset += 1;
         if self.checked_row_offset == 4 {
-            self.rendered_row_counter = 0;
+            self.rendering_delay = 0;
             self.update_lines_delay = 5;
             self.play_state = PlayState::DoNothing;
             if self.cleared_lines == 0 {
@@ -304,7 +304,7 @@ impl GameplayState {
     }
 
     fn spawn_next_piece(&mut self) {
-        if self.rendered_row_counter < 20 {
+        if self.rendering_delay < 5 {
             return;
         }
         self.fall_timer = 0;
@@ -478,7 +478,7 @@ impl GameplayState {
         } else {
             0
         };
-        self.rendered_row_counter = u8::min(self.rendered_row_counter, highest_row_to_update);
+        self.rendering_delay = u8::min(self.rendering_delay * 4, highest_row_to_update) / 4;
     }
 
     fn initialize_type_b_tiles(&mut self, height_index: u8) {
