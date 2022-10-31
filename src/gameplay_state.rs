@@ -8,31 +8,32 @@ use bitvec::prelude::*;
 
 #[derive(Clone, Eq, PartialEq)]
 pub struct GameplayState {
-    pub dead: bool,
-    pub paused: bool,
-    pub game_mode_state: GameModeState,
-    pub play_state: PlayState,
-    pub checked_row_offset: u8,
-    pub update_lines_delay: u8,
-    pub previous_input: Input,
-    pub random: Random,
-    pub frame_counter: u8,
-    pub rendering_delay: u8,
-    pub cleared_lines: u8,
-    pub current_piece_x: i8,
-    pub current_piece_y: i8,
-    pub hold_down_points: u8,
-    pub fall_timer: u8,
-    pub drop_autorepeat: i8,
-    pub shift_autorepeat: u8,
-    pub game_type: GameType,
-    pub tiles: BitArr!(for 0x100),
-    pub current_piece: Piece,
-    pub next_piece: Piece,
-    pub score: u32,
-    pub level: u8,
-    pub line_count: u16,
-    pub play_state_delay: u8,
+    // each field is listed with its equivalent from the base game
+    pub dead: bool,   // $68 == #10, once true never changes back to false
+    pub paused: bool, // true if execution is in loop at $a3c4
+    pub game_mode_state: GameModeState, // $a7
+    pub play_state: PlayState, // $68
+    pub checked_row_offset: u8, // $aa in routine at $99a2, but counts up instead of down
+    pub update_lines_delay: u8, // $72
+    pub previous_input: Input, // $f7 on previous frame
+    pub random: Random, // $17-$1a
+    pub frame_counter: u8, // $b1
+    pub rendering_delay: u8, // $69
+    pub cleared_lines: u8, // $76
+    pub current_piece_x: i8, // $60
+    pub current_piece_y: i8, // $61
+    pub hold_down_points: u8, // $6f
+    pub fall_timer: u8, // $65
+    pub drop_autorepeat: i8, // $6e
+    pub shift_autorepeat: u8, // $66
+    pub game_type: GameType, // $c1
+    pub tiles: BitArr!(for 0x100), // $400-$4ff
+    pub current_piece: Piece, // $62
+    pub next_piece: Piece, // $bf
+    pub score: u32,   // $73-$75
+    pub level: u8,    // $64
+    pub line_count: u16, // $70
+    pub play_state_delay: u8, // timer which corresponds to frames where $68 == 7 or $68 == 8
 }
 
 impl GameplayState {
