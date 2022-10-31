@@ -27,88 +27,92 @@ pub enum Piece {
     None = 19,
 }
 
-static ROTATION_CYCLES: Lazy<[Vec<Piece>; 7]> = Lazy::new(|| {
-    [
-        vec![Piece::TUp, Piece::TRight, Piece::TDown, Piece::TLeft],
-        vec![Piece::JUp, Piece::JRight, Piece::JDown, Piece::JLeft],
-        vec![Piece::ZHorizontal, Piece::ZVertical],
-        vec![Piece::O],
-        vec![Piece::SHorizontal, Piece::SVertical],
-        vec![Piece::LUp, Piece::LRight, Piece::LDown, Piece::LLeft],
-        vec![Piece::IHorizontal, Piece::IVertical],
-    ]
-});
-
-static CLOCKWISE_ROTATIONS: Lazy<[Piece; 19]> = Lazy::new(|| {
-    let mut rotations = [Piece::None; 19];
-
-    let pairs = ROTATION_CYCLES.iter().flat_map(|cycle| {
-        cycle
-            .iter()
-            .zip(cycle.iter().skip(1).chain(once(cycle.first().unwrap())))
-    });
-
-    for (first, second) in pairs {
-        rotations[*first as usize] = *second;
-    }
-
-    rotations
-});
-
-static COUNTERCLOCKWISE_ROTATIONS: Lazy<[Piece; 19]> = Lazy::new(|| {
-    let mut rotations = [Piece::None; 19];
-
-    let pairs = ROTATION_CYCLES.iter().flat_map(|cycle| {
-        cycle
-            .iter()
-            .skip(1)
-            .chain(once(cycle.first().unwrap()))
-            .zip(cycle.iter())
-    });
-
-    for (first, second) in pairs {
-        rotations[*first as usize] = *second;
-    }
-
-    rotations
-});
-
 impl Piece {
-    const TILE_OFFSETS: [[(i8, i8); 4]; 19] = [
-        [(-1, 0), (0, 0), (1, 0), (0, -1)],
-        [(0, -1), (0, 0), (1, 0), (0, 1)],
-        [(-1, 0), (0, 0), (1, 0), (0, 1)],
-        [(0, -1), (-1, 0), (0, 0), (0, 1)],
-        [(0, -1), (0, 0), (-1, 1), (0, 1)],
-        [(-1, -1), (-1, 0), (0, 0), (1, 0)],
-        [(0, -1), (1, -1), (0, 0), (0, 1)],
-        [(-1, 0), (0, 0), (1, 0), (1, 1)],
-        [(-1, 0), (0, 0), (0, 1), (1, 1)],
-        [(1, -1), (0, 0), (1, 0), (0, 1)],
-        [(-1, 0), (0, 0), (-1, 1), (0, 1)],
-        [(0, 0), (1, 0), (-1, 1), (0, 1)],
-        [(0, -1), (0, 0), (1, 0), (1, 1)],
-        [(0, -1), (0, 0), (0, 1), (1, 1)],
-        [(-1, 0), (0, 0), (1, 0), (-1, 1)],
-        [(-1, -1), (0, -1), (0, 0), (0, 1)],
-        [(1, -1), (-1, 0), (0, 0), (1, 0)],
-        [(0, -2), (0, -1), (0, 0), (0, 1)],
-        [(-2, 0), (-1, 0), (0, 0), (1, 0)],
-    ];
-
     pub fn to_id(self) -> u8 {
         self.to_u8().unwrap()
     }
 
     pub fn get_clockwise_rotation(self) -> Self {
+        static CLOCKWISE_ROTATIONS: Lazy<[Piece; 19]> = Lazy::new(|| {
+            let mut rotations = [Piece::None; 19];
+
+            let pairs = Piece::get_rotation_cycles().iter().flat_map(|cycle| {
+                cycle
+                    .iter()
+                    .zip(cycle.iter().skip(1).chain(once(cycle.first().unwrap())))
+            });
+
+            for (first, second) in pairs {
+                rotations[*first as usize] = *second;
+            }
+
+            rotations
+        });
+
         CLOCKWISE_ROTATIONS[self as usize]
     }
 
     pub fn get_counterclockwise_rotation(self) -> Self {
+        static COUNTERCLOCKWISE_ROTATIONS: Lazy<[Piece; 19]> = Lazy::new(|| {
+            let mut rotations = [Piece::None; 19];
+
+            let pairs = Piece::get_rotation_cycles().iter().flat_map(|cycle| {
+                cycle
+                    .iter()
+                    .skip(1)
+                    .chain(once(cycle.first().unwrap()))
+                    .zip(cycle.iter())
+            });
+
+            for (first, second) in pairs {
+                rotations[*first as usize] = *second;
+            }
+
+            rotations
+        });
+
         COUNTERCLOCKWISE_ROTATIONS[self as usize]
     }
 
     pub fn get_tile_offsets(self) -> &'static [(i8, i8); 4] {
-        &Self::TILE_OFFSETS[self as usize]
+        const TILE_OFFSETS: [[(i8, i8); 4]; 19] = [
+            [(-1, 0), (0, 0), (1, 0), (0, -1)],
+            [(0, -1), (0, 0), (1, 0), (0, 1)],
+            [(-1, 0), (0, 0), (1, 0), (0, 1)],
+            [(0, -1), (-1, 0), (0, 0), (0, 1)],
+            [(0, -1), (0, 0), (-1, 1), (0, 1)],
+            [(-1, -1), (-1, 0), (0, 0), (1, 0)],
+            [(0, -1), (1, -1), (0, 0), (0, 1)],
+            [(-1, 0), (0, 0), (1, 0), (1, 1)],
+            [(-1, 0), (0, 0), (0, 1), (1, 1)],
+            [(1, -1), (0, 0), (1, 0), (0, 1)],
+            [(-1, 0), (0, 0), (-1, 1), (0, 1)],
+            [(0, 0), (1, 0), (-1, 1), (0, 1)],
+            [(0, -1), (0, 0), (1, 0), (1, 1)],
+            [(0, -1), (0, 0), (0, 1), (1, 1)],
+            [(-1, 0), (0, 0), (1, 0), (-1, 1)],
+            [(-1, -1), (0, -1), (0, 0), (0, 1)],
+            [(1, -1), (-1, 0), (0, 0), (1, 0)],
+            [(0, -2), (0, -1), (0, 0), (0, 1)],
+            [(-2, 0), (-1, 0), (0, 0), (1, 0)],
+        ];
+
+        &TILE_OFFSETS[self as usize]
+    }
+
+    fn get_rotation_cycles() -> &'static [Vec<Piece>; 7] {
+        static ROTATION_CYCLES: Lazy<[Vec<Piece>; 7]> = Lazy::new(|| {
+            [
+                vec![Piece::TUp, Piece::TRight, Piece::TDown, Piece::TLeft],
+                vec![Piece::JUp, Piece::JRight, Piece::JDown, Piece::JLeft],
+                vec![Piece::ZHorizontal, Piece::ZVertical],
+                vec![Piece::O],
+                vec![Piece::SHorizontal, Piece::SVertical],
+                vec![Piece::LUp, Piece::LRight, Piece::LDown, Piece::LLeft],
+                vec![Piece::IHorizontal, Piece::IVertical],
+            ]
+        });
+
+        return &*ROTATION_CYCLES;
     }
 }

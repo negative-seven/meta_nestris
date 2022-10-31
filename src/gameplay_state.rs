@@ -36,10 +36,6 @@ pub struct GameplayState {
 }
 
 impl GameplayState {
-    const B_TYPE_HEIGHTS: [u8; 6] = [20, 17, 15, 12, 10, 8];
-    const B_TYPE_RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
-    const LINE_CLEAR_POINTS: [u16; 5] = [0, 40, 100, 300, 1200];
-
     pub fn new(
         random: &Random,
         frame_counter: u8,
@@ -253,6 +249,8 @@ impl GameplayState {
     }
 
     fn update_score_and_line_count(&mut self) {
+        const BASE_LINE_CLEAR_POINTS: [u16; 5] = [0, 40, 100, 300, 1200];
+
         fn to_bcd(number: u8) -> u8 {
             number + 6 * (number / 10)
         }
@@ -295,7 +293,7 @@ impl GameplayState {
         }
         self.hold_down_points = 0;
 
-        self.score += u32::from(Self::LINE_CLEAR_POINTS[self.cleared_lines as usize])
+        self.score += u32::from(BASE_LINE_CLEAR_POINTS[self.cleared_lines as usize])
             * u32::from(self.level + 1);
         self.cleared_lines = 0;
 
@@ -482,6 +480,9 @@ impl GameplayState {
     }
 
     fn initialize_type_b_tiles(&mut self, height_index: u8) {
+        const B_TYPE_HEIGHTS: [u8; 6] = [20, 17, 15, 12, 10, 8];
+        const B_TYPE_RNG_TABLE: [bool; 8] = [false, true, false, true, true, true, false, false];
+
         for y in 8..20 {
             self.random.cycle();
 
@@ -491,7 +492,7 @@ impl GameplayState {
                 self.set_tile(
                     x,
                     y,
-                    Self::B_TYPE_RNG_TABLE[(self.random.get_value() % 8) as usize],
+                    B_TYPE_RNG_TABLE[(self.random.get_value() % 8) as usize],
                 );
             }
 
@@ -503,7 +504,7 @@ impl GameplayState {
 
         // behavior from the base game: one additional tile (leftmost tile of the highest garbage row)
         // is also cleared
-        let tiles_to_clear = usize::from(Self::B_TYPE_HEIGHTS[usize::from(height_index)]) * 10 + 1;
+        let tiles_to_clear = usize::from(B_TYPE_HEIGHTS[usize::from(height_index)]) * 10 + 1;
         self.tiles[..tiles_to_clear].fill(false);
     }
 }
