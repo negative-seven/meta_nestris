@@ -63,6 +63,7 @@ pub mod gameplay_state;
 pub mod input;
 pub mod menu_mode;
 pub mod menu_state;
+pub mod meta_state;
 pub mod modifier;
 pub mod movie;
 pub mod piece;
