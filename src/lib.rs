@@ -1,12 +1,11 @@
-pub mod menu_mode;
+pub mod game_mode_state;
+pub mod game_type;
 pub mod gameplay_state;
 pub mod input;
+pub mod menu_mode;
 pub mod menu_state;
 pub mod movie;
+pub mod piece;
+pub mod play_state;
+pub mod random;
 pub mod state;
-
-mod game_type;
-mod game_mode_state;
-mod piece;
-mod play_state;
-mod random;
