@@ -1,7 +1,6 @@
 use bitmask_enum::bitmask;
 
 #[bitmask(u8)]
-#[derive(Eq, PartialEq)]
 pub enum Input {
     None = 0,
     Right = 0x01,
