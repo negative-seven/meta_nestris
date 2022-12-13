@@ -14,4 +14,5 @@ A largely functionally accurate recreation of NES Tetris in Rust.
   - lag/crashing at high levels
   
 ### Known untested behavior:
-  - overflow for some variables, such as line count or level number.
+  - handling of offscreen tiles
+  - overflow for some variables, such as line count or level number
