@@ -3,7 +3,7 @@ use num_traits::ToPrimitive;
 use once_cell::sync::Lazy;
 use std::iter::once;
 
-#[derive(Clone, Copy, Eq, PartialEq, Primitive)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, Primitive)]
 pub enum Piece {
     TUp = 0,
     TRight = 1,

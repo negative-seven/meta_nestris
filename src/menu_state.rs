@@ -13,7 +13,7 @@ use crate::{
 ///
 /// The `MODIFIER` const generic specifies game modifiers - see [`Modifier`] for
 /// a list of modifiers.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MenuState<const MODIFIER: Modifier> {
     pub nmi_on: bool,
     pub delay_timer: u16,

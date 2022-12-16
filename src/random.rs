@@ -2,7 +2,7 @@ use once_cell::sync::Lazy;
 
 use crate::piece::Piece;
 
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Random {
     pub index: u16,
     pub piece_counter: u8,

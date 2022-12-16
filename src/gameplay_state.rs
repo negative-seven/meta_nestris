@@ -7,7 +7,7 @@ use crate::{
 use bitvec::prelude::*;
 
 /// A de facto gameplay state; i.e. a state where the playfield is present.
-#[derive(Clone, Eq, PartialEq)]
+#[derive(Clone, Debug, Eq, PartialEq)]
 pub struct GameplayState {
     // each field is listed with its equivalent from the base game
     pub dead: bool,   // $68 == #10, once true never changes back to false
