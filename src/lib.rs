@@ -51,12 +51,16 @@
 //!   `shift_autorepeat` field in `GameplayState` counting down, rather than up
 //!   like its respective variable in the original game.
 
+#![allow(incomplete_features)]
+#![feature(adt_const_params)]
+
 pub mod game_mode_state;
 pub mod game_type;
 pub mod gameplay_state;
 pub mod input;
 pub mod menu_mode;
 pub mod menu_state;
+pub mod modifier;
 pub mod movie;
 pub mod piece;
 pub mod play_state;

@@ -1,3 +1,4 @@
+use meta_nestris::modifier::Modifier;
 use meta_nestris::{input::Input, menu_mode::MenuMode, movie::Movie, state::State};
 use serde::Deserialize;
 use serde::Deserializer;
@@ -70,7 +71,7 @@ fn movie_playback() {
     }
 }
 
-fn check_state(state: &State, check: &MovieCheck) {
+fn check_state(state: &State<{ Modifier::none() }>, check: &MovieCheck) {
     if let Some(score) = check.score {
         match state {
             State::MenuState(_) => panic!("found menu state during score check"),
