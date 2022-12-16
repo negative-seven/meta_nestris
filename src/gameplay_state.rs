@@ -6,6 +6,7 @@ use crate::{
 };
 use bitvec::prelude::*;
 
+/// A de facto gameplay state; i.e. a state where the playfield is present.
 #[derive(Clone, Eq, PartialEq)]
 pub struct GameplayState {
     // each field is listed with its equivalent from the base game
@@ -109,6 +110,7 @@ impl GameplayState {
         }
     }
 
+    /// Steps to the next state.
     pub fn step(&mut self, input: Input) {
         if self.dead {
             return;
@@ -229,8 +231,9 @@ impl GameplayState {
             let moved_tiles = if checked_row > 0 {
                 checked_row * 10
             } else {
-                246 // bug from base game: top row clear causes 256 tiles to be moved;
-                    // indices 246..256 can be ignored as tiles 256..266 are never read in 1-player mode
+                246 // bug from base game: top row clear causes 256 tiles to be
+                    // moved; indices 246..256 can be ignored as tiles 256..266
+                    // are never read in 1-player mode
             };
             self.tiles.copy_within(0..usize::from(moved_tiles), 10);
             self.tiles[..10].fill(false);
@@ -325,9 +328,10 @@ impl GameplayState {
 
         let pressed_input = input.difference(self.previous_input);
         if pressed_input.get(Input::Left) || pressed_input.get(Input::Right) {
-            // new left/right press; try to shift piece immediately, but set autorepeat timer to high value
-            // note that this can be triggered on two consecutive frames with left/right followed by left+right
-            // this allows for two movements to the right on two consecutive frames
+            // new left/right press; try to shift piece immediately, but set autorepeat
+            // timer to high value. note that this can be triggered on two
+            // consecutive frames with left/right followed by left+right - this allows for
+            // two movements to the right on two consecutive frames
             self.shift_autorepeat = 15;
         } else if self.shift_autorepeat == 0 {
             // autorepeat timer elapsed; try to shift piece
@@ -367,7 +371,7 @@ impl GameplayState {
                 // signed_tile_y < 0 causes strange indexing due to 8-bit integer overflow
                 // e.g.: tile 9 of row -1 ends up being indexed as tile 5 of row 25
                 tile_x = signed_tile_x as usize + 6; // signed_tile_x is guaranteed to be non-negative here due to earlier check
-                tile_y = (signed_tile_y + 25) as usize; // signed_tile_y is guaranteed to be >= -2 because y >= 0 and tile_offset_y >= -2
+                tile_y = (signed_tile_y + 25) as usize; // guaranteed signed_tile_y >= -2 because y >= 0 and tile_offset_y >= -2
                 if tile_x >= 10 {
                     tile_x -= 10;
                     tile_y += 1;
@@ -503,8 +507,8 @@ impl GameplayState {
             self.set_tile(x, y, false);
         }
 
-        // behavior from the base game: one additional tile (leftmost tile of the highest garbage row)
-        // is also cleared
+        // behavior from the base game: one additional tile (leftmost tile of the
+        // highest garbage row) is also cleared
         let tiles_to_clear = usize::from(B_TYPE_HEIGHTS[usize::from(height_index)]) * 10 + 1;
         self.tiles[..tiles_to_clear].fill(false);
     }

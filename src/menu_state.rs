@@ -3,6 +3,13 @@ use crate::{
     random::Random,
 };
 
+/// A menu state; i.e. a state where the playfield is absent.
+///
+/// When appropriate, [`step`](Self::step) will return a `Some(GameplayState)`,
+/// indicating a transformation of the current `MenuState` to a
+/// [`GameplayState`]. This makes the current `MenuState` functionally invalid,
+/// despite it not being dropped. For this transformation to be handled
+/// automatically, use the [`State`](crate::state::State) type.
 #[derive(Clone, Eq, PartialEq)]
 pub struct MenuState {
     pub nmi_on: bool,
@@ -40,6 +47,9 @@ impl MenuState {
         }
     }
 
+    /// Steps to the next state. If `Some(GameplayState)` is returned, it means
+    /// the state has transformed to a [`GameplayState`], which should now be
+    /// used instead of this `MenuState` object.
     pub fn step(&mut self, input: Input) -> Option<GameplayState> {
         if self.nmi_on {
             self.frame_counter = (self.frame_counter + 1) % 4;
