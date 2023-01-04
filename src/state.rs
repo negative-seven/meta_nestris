@@ -9,17 +9,17 @@ use crate::{
 /// when applicable.
 ///
 /// The `MODIFIER` const generic specifies game modifiers - see [`Modifier`] for
-/// a list of modifiers.
+/// supported modifiers.
 #[derive(Clone, Debug)]
 pub enum State<const MODIFIER: Modifier> {
     MenuState(MenuState<MODIFIER>),
     GameplayState(GameplayState),
 }
 
-impl State<{ Modifier::none() }> {
+impl State<{ Modifier::empty() }> {
     /// Creates a `State` with an "empty" [`Modifier`].
     ///
-    /// Equivalent to `State::<{ Modifier::none() }>::new_with_modifier`.
+    /// Equivalent to `State::<{ Modifier::empty() }>::new_with_modifier`.
     pub fn new() -> Self {
         Self::new_with_modifier()
     }
@@ -32,9 +32,13 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
     /// ```
     /// use meta_nestris::{modifier::Modifier, state::State};
     ///
+    /// const MODIFIER: Modifier = Modifier {
+    ///     select_adds_20_levels: true,
+    /// };
+    ///
     /// // both equivalent:
-    /// let state_a = State::<{ Modifier::SelectAdds20Levels }>::new_with_modifier();
-    /// let state_b: State<{Modifier::SelectAdds20Levels}> = State::new_with_modifier();
+    /// let state_a = State::<MODIFIER>::new_with_modifier();
+    /// let state_b: State::<MODIFIER> = State::new_with_modifier();
     /// ```
     pub fn new_with_modifier() -> Self {
         Self::MenuState(MenuState::new_with_modifier())

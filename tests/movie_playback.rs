@@ -71,7 +71,7 @@ fn movie_playback() {
     }
 }
 
-fn check_state(state: &State<{ Modifier::none() }>, check: &MovieCheck) {
+fn check_state(state: &State<{ Modifier::empty() }>, check: &MovieCheck) {
     if let Some(score) = check.score {
         match state {
             State::MenuState(_) => panic!("found menu state during score check"),

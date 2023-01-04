@@ -12,7 +12,7 @@ use crate::{
 /// automatically, use the [`State`](crate::state::State) type.
 ///
 /// The `MODIFIER` const generic specifies game modifiers - see [`Modifier`] for
-/// a list of modifiers.
+/// supported modifiers.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct MenuState<const MODIFIER: Modifier> {
     pub nmi_on: bool,
@@ -29,10 +29,10 @@ pub struct MenuState<const MODIFIER: Modifier> {
     pub selected_height: u8,
 }
 
-impl MenuState<{ Modifier::none() }> {
+impl MenuState<{ Modifier::empty() }> {
     /// Creates a `MenuState` with an "empty" [`Modifier`].
     ///
-    /// Equivalent to `MenuState::<{ Modifier::none() }>::new_with_modifier`.
+    /// Equivalent to `MenuState::<{ Modifier::empty() }>::new_with_modifier`.
     pub fn new() -> Self {
         Self::new_with_modifier()
     }
@@ -45,9 +45,13 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
     /// ```
     /// use meta_nestris::{modifier::Modifier, menu_state::MenuState};
     ///
+    /// const MODIFIER: Modifier = Modifier {
+    ///     select_adds_20_levels: true,
+    /// };
+    ///
     /// // both equivalent:
-    /// let state_a = MenuState::<{ Modifier::SelectAdds20Levels }>::new_with_modifier();
-    /// let state_b: MenuState<{Modifier::SelectAdds20Levels}> = MenuState::new_with_modifier();
+    /// let state_a = MenuState::<MODIFIER>::new_with_modifier();
+    /// let state_b: MenuState<MODIFIER> = MenuState::new_with_modifier();
     /// ```
     pub fn new_with_modifier() -> Self {
         let mut random = Random::new();
@@ -199,15 +203,14 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
         }
 
         if pressed_input == Input::Start {
-            self.selected_level += if MODIFIER.contains(Modifier::SelectAdds20Levels)
-                && input == Input::Start | Input::Select
-            {
-                20
-            } else if input == Input::Start | Input::A {
-                10
-            } else {
-                0
-            };
+            self.selected_level +=
+                if MODIFIER.select_adds_20_levels && input == Input::Start | Input::Select {
+                    20
+                } else if input == Input::Start | Input::A {
+                    10
+                } else {
+                    0
+                };
             self.delay_timer = 3;
             self.menu_mode = MenuMode::InitializingGame;
         } else if pressed_input == Input::B {
