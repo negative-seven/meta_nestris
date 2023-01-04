@@ -1,14 +1,17 @@
 use std::convert::TryInto;
 
 use crate::{
-    game_mode_state::GameModeState, game_type::GameType, input::Input, piece::Piece,
-    play_state::PlayState, random::Random,
+    game_mode_state::GameModeState, game_type::GameType, input::Input, modifier::Modifier,
+    piece::Piece, play_state::PlayState, random::Random,
 };
 use bitvec::prelude::*;
 
 /// A de facto gameplay state; i.e. a state where the playfield is present.
+///
+/// The `MODIFIER` const generic specifies game modifiers - see [`Modifier`] for
+/// supported modifiers.
 #[derive(Clone, Debug, Eq, PartialEq)]
-pub struct GameplayState {
+pub struct GameplayState<const MODIFIER: Modifier> {
     // each field is listed with its equivalent from the base game
     pub dead: bool,   // $68 == #10, once true never changes back to false
     pub paused: bool, // true if execution is in loop at $a3c4
@@ -37,8 +40,43 @@ pub struct GameplayState {
     pub play_state_delay: u8, // timer which corresponds to frames where $68 == 7 or $68 == 8
 }
 
-impl GameplayState {
-    pub fn new(
+impl GameplayState<{ Modifier::empty() }> {
+    /// Creates a `GameplayState` with an "empty" [`Modifier`].
+    ///
+    /// Equivalent to `GameplayState::<{ Modifier::empty()
+    /// }>::new_with_modifier`.
+    pub fn new() -> Self {
+        todo!()
+    }
+}
+
+impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
+    /// Creates a `GameplayState` with a [`Modifier`].
+    ///
+    /// Example:
+    /// ```
+    /// use meta_nestris::{
+    ///     game_type::GameType, gameplay_state::GameplayState, input::Input, modifier::Modifier,
+    ///     random::Random,
+    /// };
+    ///
+    /// const MODIFIER: Modifier = Modifier {
+    ///     select_adds_20_levels: true,
+    /// };
+    ///
+    /// // both equivalent:
+    /// let state_a = GameplayState::<MODIFIER>::new_with_modifier(
+    ///     &Random::new(),
+    ///     0,
+    ///     Input::None,
+    ///     GameType::A,
+    ///     19,
+    ///     0,
+    /// );
+    /// let state_b: GameplayState<MODIFIER> =
+    ///     GameplayState::new_with_modifier(&Random::new(), 0, Input::None, GameType::A, 19, 0);
+    /// ```
+    pub fn new_with_modifier(
         random: &Random,
         frame_counter: u8,
         previous_input: Input,

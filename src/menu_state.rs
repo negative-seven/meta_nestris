@@ -43,7 +43,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
     ///
     /// Example:
     /// ```
-    /// use meta_nestris::{modifier::Modifier, menu_state::MenuState};
+    /// use meta_nestris::{menu_state::MenuState, modifier::Modifier};
     ///
     /// const MODIFIER: Modifier = Modifier {
     ///     select_adds_20_levels: true,
@@ -76,7 +76,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
     /// Steps to the next state. If `Some(GameplayState)` is returned, it means
     /// the state has transformed to a [`GameplayState`], which should now be
     /// used instead of this `MenuState` object.
-    pub fn step(&mut self, input: Input) -> Option<GameplayState> {
+    pub fn step(&mut self, input: Input) -> Option<GameplayState<MODIFIER>> {
         if self.nmi_on {
             self.frame_counter = (self.frame_counter + 1) % 4;
             self.random.cycle();
@@ -93,7 +93,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
         }
 
         if self.change_to_gameplay_state {
-            return Some(GameplayState::new(
+            return Some(GameplayState::new_with_modifier(
                 &self.random,
                 self.frame_counter,
                 self.previous_input,

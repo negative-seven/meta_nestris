@@ -1,8 +1,9 @@
 /// Options to modify game behavior.
 ///
-/// This type's only intended use is to be passed as a const generic to
-/// [`State`](crate::state::State) and
-/// [`MenuState`](crate::menu_state::MenuState).
+/// This type's only intended use is as a const generic for
+/// [`State`](crate::state::State),
+/// [`MenuState`](crate::menu_state::MenuState) and
+/// [`GameplayState`](crate::gameplay_state::GameplayState).
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Modifier {

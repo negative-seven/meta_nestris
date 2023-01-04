@@ -13,7 +13,7 @@ use crate::{
 #[derive(Clone, Debug)]
 pub enum State<const MODIFIER: Modifier> {
     MenuState(MenuState<MODIFIER>),
-    GameplayState(GameplayState),
+    GameplayState(GameplayState<MODIFIER>),
 }
 
 impl State<{ Modifier::empty() }> {
@@ -38,7 +38,7 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
     ///
     /// // both equivalent:
     /// let state_a = State::<MODIFIER>::new_with_modifier();
-    /// let state_b: State::<MODIFIER> = State::new_with_modifier();
+    /// let state_b: State<MODIFIER> = State::new_with_modifier();
     /// ```
     pub fn new_with_modifier() -> Self {
         Self::MenuState(MenuState::new_with_modifier())
