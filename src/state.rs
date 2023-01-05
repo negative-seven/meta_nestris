@@ -34,7 +34,7 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
     ///
     /// const MODIFIER: Modifier = Modifier {
     ///     uncapped_score: true,
-    ///     select_adds_20_levels: true,
+    ///     ..Modifier::empty()
     /// };
     ///
     /// // both equivalent:

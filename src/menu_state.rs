@@ -47,7 +47,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
     ///
     /// const MODIFIER: Modifier = Modifier {
     ///     uncapped_score: true,
-    ///     select_adds_20_levels: true,
+    ///     ..Modifier::empty()
     /// };
     ///
     /// // both equivalent:

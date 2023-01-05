@@ -62,10 +62,9 @@ fn movie_playback() {
         let inputs = movie.inputs.into_iter().chain(repeat(Input::None));
 
         if movie_data.uncapped_score {
-            const MODIFIER: Modifier = {
-                let mut modifier = Modifier::empty();
-                modifier.uncapped_score = true;
-                modifier
+            const MODIFIER: Modifier = Modifier {
+                uncapped_score: true,
+                ..Modifier::empty()
             };
             check_movie::<MODIFIER>(&movie_data.checks, inputs);
         } else {
