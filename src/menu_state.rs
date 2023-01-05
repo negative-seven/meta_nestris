@@ -238,3 +238,9 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
         self.change_to_gameplay_state = true;
     }
 }
+
+impl<const MODIFIER: Modifier> Default for MenuState<MODIFIER> {
+    fn default() -> Self {
+        Self::new_with_modifier()
+    }
+}

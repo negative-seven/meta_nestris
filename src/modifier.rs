@@ -24,3 +24,9 @@ impl Modifier {
         }
     }
 }
+
+impl Default for Modifier {
+    fn default() -> Self {
+        Self::empty()
+    }
+}

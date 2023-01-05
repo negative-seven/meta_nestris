@@ -85,3 +85,9 @@ impl Random {
         self.last_piece
     }
 }
+
+impl Default for Random {
+    fn default() -> Self {
+        Self::new()
+    }
+}

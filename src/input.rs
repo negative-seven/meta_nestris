@@ -53,3 +53,9 @@ impl Input {
         self & !other
     }
 }
+
+impl Default for Input {
+    fn default() -> Self {
+        Self::new()
+    }
+}

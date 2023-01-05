@@ -57,3 +57,9 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
         }
     }
 }
+
+impl<const MODIFIER: Modifier> Default for State<MODIFIER> {
+    fn default() -> Self {
+        Self::new_with_modifier()
+    }
+}
