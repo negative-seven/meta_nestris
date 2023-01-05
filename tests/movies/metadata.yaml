@@ -70,9 +70,26 @@
     306:
       is_gameplay_state: true
 
-# 999999 points on A-type game
+# 999999 points on A-type game (capped score)
+
+- filename: a_type_999999_score\tasvideos_1596m.fm2
+  checks:
+    11514:
+      score: 988998
+    11515:
+      score: 999999
+
+- filename: a_type_999999_score\tasvideos_7625s.fm2
+  checks:
+    10462:
+      score: 988831
+    10463:
+      score: 999999
+
+# 999999 points on A-type game (uncapped score)
 
 - filename: a_type_999999_score\tasvideos_239m.fm2
+  uncapped_score: true
   checks:
     14586:
       score: 972450
@@ -80,6 +97,7 @@
       score: 1000051
 
 - filename: a_type_999999_score\tasvideos_386m.fm2
+  uncapped_score: true
   checks:
     14266:
       score: 999600
@@ -87,6 +105,7 @@
       score: 1000520
 
 - filename: a_type_999999_score\tasvideos_399m.fm2
+  uncapped_score: true
   checks:
     13307:
       score: 999998
@@ -94,6 +113,7 @@
       score: 999999
 
 - filename: a_type_999999_score\tasvideos_924m.fm2
+  uncapped_score: true
   checks:
     12593:
       score: 999997
@@ -101,6 +121,7 @@
       score: 999999
 
 - filename: a_type_999999_score\tasvideos_1596m.fm2
+  uncapped_score: true
   checks:
     11514:
       score: 988998
@@ -108,6 +129,7 @@
       score: 1017800
 
 - filename: a_type_999999_score\tasvideos_7625s.fm2
+  uncapped_score: true
   checks:
     10462:
       score: 988831

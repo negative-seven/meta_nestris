@@ -33,6 +33,7 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
     /// use meta_nestris::{modifier::Modifier, state::State};
     ///
     /// const MODIFIER: Modifier = Modifier {
+    ///     uncapped_score: true,
     ///     select_adds_20_levels: true,
     /// };
     ///

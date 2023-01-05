@@ -61,6 +61,7 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
     /// };
     ///
     /// const MODIFIER: Modifier = Modifier {
+    ///     uncapped_score: true,
     ///     select_adds_20_levels: true,
     /// };
     ///
@@ -337,6 +338,11 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
 
         self.score += u32::from(BASE_LINE_CLEAR_POINTS[self.cleared_lines as usize])
             * u32::from(self.level + 1);
+
+        if !MODIFIER.uncapped_score {
+            self.score = self.score.min(999999);
+        }
+
         self.cleared_lines = 0;
 
         self.play_state = PlayState::SpawnNextTetrimino;

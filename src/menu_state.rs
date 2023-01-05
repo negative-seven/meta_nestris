@@ -46,6 +46,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
     /// use meta_nestris::{menu_state::MenuState, modifier::Modifier};
     ///
     /// const MODIFIER: Modifier = Modifier {
+    ///     uncapped_score: true,
     ///     select_adds_20_levels: true,
     /// };
     ///

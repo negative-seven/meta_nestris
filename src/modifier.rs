@@ -7,6 +7,9 @@
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Modifier {
+    /// Prevents the score from being capped at 999999.
+    pub uncapped_score: bool,
+
     /// Allows for the use of select + start on the level selection screen to
     /// add 20 to the selected level number, alongside the A + start button
     /// combination from the original game.
@@ -16,6 +19,7 @@ pub struct Modifier {
 impl Modifier {
     pub const fn empty() -> Self {
         Self {
+            uncapped_score: false,
             select_adds_20_levels: false,
         }
     }

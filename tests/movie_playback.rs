@@ -1,3 +1,6 @@
+#![allow(incomplete_features)]
+#![feature(adt_const_params)]
+
 use meta_nestris::modifier::Modifier;
 use meta_nestris::{input::Input, menu_mode::MenuMode, movie::Movie, state::State};
 use serde::Deserialize;
@@ -7,6 +10,8 @@ use std::{collections::HashMap, fs::File, iter::repeat, path::PathBuf};
 #[derive(Deserialize)]
 struct MovieData {
     filename: String,
+    #[serde(default)] // default to false
+    uncapped_score: bool,
     checks: HashMap<u32, MovieCheck>,
 }
 
@@ -46,10 +51,6 @@ fn movie_playback() {
         serde_yaml::from_reader(File::open("tests/movies/metadata.yaml").unwrap()).unwrap();
 
     for movie_data in metadata_json {
-        // may need to play movie beyond final stored input
-        // at the same time, do not need to play movie beyond last checked frame
-        let playback_duration = *movie_data.checks.keys().max().unwrap();
-
         let movie_full_filepath = PathBuf::from("tests/movies/").join(movie_data.filename);
         let movie = Movie::from_fm2(&movie_full_filepath).expect(
             format!(
@@ -60,18 +61,38 @@ fn movie_playback() {
         );
         let inputs = movie.inputs.into_iter().chain(repeat(Input::None));
 
-        let mut state = State::new();
-        for (input, frame) in inputs.zip(1..=playback_duration) {
-            state.step(input);
-
-            if let Some(check) = movie_data.checks.get(&frame) {
-                check_state(&state, check);
-            }
+        if movie_data.uncapped_score {
+            const MODIFIER: Modifier = {
+                let mut modifier = Modifier::empty();
+                modifier.uncapped_score = true;
+                modifier
+            };
+            check_movie::<MODIFIER>(&movie_data.checks, inputs);
+        } else {
+            check_movie::<{ Modifier::empty() }>(&movie_data.checks, inputs);
         }
     }
 }
 
-fn check_state(state: &State<{ Modifier::empty() }>, check: &MovieCheck) {
+fn check_movie<const MODIFIER: Modifier>(
+    checks: &HashMap<u32, MovieCheck>,
+    inputs: impl Iterator<Item = Input>,
+) {
+    // may need to play movie beyond final stored input
+    // at the same time, do not need to play movie beyond last checked frame
+    let playback_duration = *checks.keys().max().unwrap();
+
+    let mut state = State::<MODIFIER>::new_with_modifier();
+    for (input, frame) in inputs.zip(1..=playback_duration) {
+        state.step(input);
+
+        if let Some(check) = checks.get(&frame) {
+            check_state(&state, check);
+        }
+    }
+}
+
+fn check_state<const MODIFIER: Modifier>(state: &State<MODIFIER>, check: &MovieCheck) {
     if let Some(score) = check.score {
         match state {
             State::MenuState(_) => panic!("found menu state during score check"),

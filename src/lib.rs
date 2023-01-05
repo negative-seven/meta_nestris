@@ -45,11 +45,14 @@
 //! * Gameplay continues after the B-type goal is reached.
 //! * The state remains unchanged once the player loses.
 //! * Lag and program counter corruption at high levels is not emulated.
-//! * The player's score is not capped at 999999. This is intentional.
 //! * Some operations have been intentionally altered in ways that simplify
 //!   logic, but do not ultimately affect accuracy. An example of this is the
 //!   `shift_autorepeat` field in `GameplayState` counting down, rather than up
 //!   like its respective variable in the original game.
+//!
+//! Further modifications to the game, such as preventing the score from being
+//! capped at 999999, can also be applied: see the
+//! [`Modifier`](crate::modifier::Modifier) type for details.
 
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
