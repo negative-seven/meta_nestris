@@ -14,11 +14,12 @@ pub enum Input {
 }
 
 impl Input {
+    #[must_use]
     pub fn new() -> Self {
         Self::None
     }
 
-    pub fn from_fm2_string(string: String) -> Result<Input, String> {
+    pub fn from_fm2_string(string: &String) -> Result<Input, String> {
         if string.len() != 8 {
             return Err("cannot create input from fm2 string of length != 8".into());
         }
@@ -33,10 +34,12 @@ impl Input {
         Ok(Input::from(input_byte))
     }
 
+    #[must_use]
     pub fn get(self, button: Input) -> bool {
         self & button != 0
     }
 
+    #[must_use]
     pub fn get_only_input(self, button: Input) -> bool {
         self == button
     }
@@ -49,6 +52,7 @@ impl Input {
         }
     }
 
+    #[must_use]
     pub fn difference(self, other: Input) -> Input {
         self & !other
     }

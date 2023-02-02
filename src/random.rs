@@ -12,6 +12,7 @@ pub struct Random {
 impl Random {
     const RNG_STATES_COUNT: u16 = 32767;
 
+    #[must_use]
     pub fn new() -> Self {
         Self {
             index: 0,
@@ -40,13 +41,14 @@ impl Random {
         }
     }
 
+    #[must_use]
     pub fn get_value(&self) -> u8 {
         static RNG_VALUES: Lazy<[u8; Random::RNG_STATES_COUNT as usize]> = Lazy::new(|| {
             let mut values = [0; Random::RNG_STATES_COUNT as usize];
 
             let mut current: u16 = 0x8988;
-            for i in 0..values.len() {
-                values[i] = (current >> 8) as u8;
+            for value in values.iter_mut() {
+                *value = (current >> 8) as u8;
 
                 let new_bit = ((current >> 9) ^ (current >> 1)) & 1;
                 current = (new_bit << 15) | (current >> 1);
@@ -77,7 +79,7 @@ impl Random {
         if (piece_index as usize) >= PIECE_TABLE.len() || get_piece(piece_index) == self.last_piece
         {
             self.cycle();
-            piece_index = ((self.get_value() % 8) + self.last_piece.to_id()) % 7;
+            piece_index = ((self.get_value() % 8) + self.last_piece as u8) % 7;
         }
 
         self.last_piece = get_piece(piece_index);

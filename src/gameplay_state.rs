@@ -45,8 +45,23 @@ impl GameplayState<{ Modifier::empty() }> {
     ///
     /// Equivalent to `GameplayState::<{ Modifier::empty()
     /// }>::new_with_modifier`.
-    pub fn new() -> Self {
-        todo!()
+    #[must_use]
+    pub fn new(
+        random: &Random,
+        frame_counter: u8,
+        previous_input: Input,
+        game_type: GameType,
+        level: u8,
+        b_type_height: u8,
+    ) -> Self {
+        Self::new_with_modifier(
+            random,
+            frame_counter,
+            previous_input,
+            game_type,
+            level,
+            b_type_height,
+        )
     }
 }
 
@@ -77,6 +92,7 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
     /// let state_b: GameplayState<MODIFIER> =
     ///     GameplayState::new_with_modifier(&Random::new(), 0, Input::None, GameType::A, 19, 0);
     /// ```
+    #[must_use]
     pub fn new_with_modifier(
         random: &Random,
         frame_counter: u8,
@@ -128,6 +144,7 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
         state
     }
 
+    #[must_use]
     pub fn get_tile(&self, x: usize, y: usize) -> bool {
         self.tiles[y * 10 + x]
     }
@@ -165,26 +182,22 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
                 self.game_mode_state = GameModeState::Unpause;
                 self.paused = false;
             }
-        } else {
-            if self.play_state == PlayState::DoNothing {
-                if self.frame_counter == 1 {
-                    self.update_lines_delay -= 1;
-                    if self.update_lines_delay == 0 {
-                        self.play_state = PlayState::UpdateLinesAndStatistics;
-                    }
-                }
-            } else {
-                if self.rendering_delay < 5 {
-                    self.rendering_delay += 1;
+        } else if self.play_state == PlayState::DoNothing {
+            if self.frame_counter == 1 {
+                self.update_lines_delay -= 1;
+                if self.update_lines_delay == 0 {
+                    self.play_state = PlayState::UpdateLinesAndStatistics;
                 }
             }
+        } else if self.rendering_delay < 5 {
+            self.rendering_delay += 1;
         }
 
         if !self.paused {
             self.step_main_logic(input);
         }
 
-        self.previous_input = input.clone();
+        self.previous_input = input;
     }
 
     fn step_main_logic(&mut self, input: Input) {
@@ -204,10 +217,10 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
             }
         }
 
-        if self.game_mode_state == GameModeState::HandleStartButton {
-            if input.difference(self.previous_input).get(Input::Start) {
-                self.paused = true;
-            }
+        if self.game_mode_state == GameModeState::HandleStartButton
+            && input.difference(self.previous_input).get(Input::Start)
+        {
+            self.paused = true;
         }
 
         self.game_mode_state = GameModeState::HandleGameplay;
@@ -340,7 +353,7 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
             * u32::from(self.level + 1);
 
         if !MODIFIER.uncapped_score {
-            self.score = self.score.min(999999);
+            self.score = self.score.min(999_999);
         }
 
         self.cleared_lines = 0;
@@ -401,7 +414,7 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
         for (tile_offset_x, tile_offset_y) in piece.get_tile_offsets() {
             let signed_tile_x = x + tile_offset_x;
             let signed_tile_y = y + tile_offset_y;
-            if signed_tile_x < 0 || signed_tile_x >= 10 || signed_tile_y >= 20 {
+            if !(0..10).contains(&signed_tile_x) || !(..20).contains(&signed_tile_y) {
                 return false;
             }
 

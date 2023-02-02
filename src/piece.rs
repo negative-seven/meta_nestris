@@ -1,5 +1,4 @@
 use enum_primitive_derive::Primitive;
-use num_traits::ToPrimitive;
 use once_cell::sync::Lazy;
 use std::iter::once;
 
@@ -28,10 +27,7 @@ pub enum Piece {
 }
 
 impl Piece {
-    pub fn to_id(self) -> u8 {
-        self.to_u8().unwrap()
-    }
-
+    #[must_use]
     pub fn get_clockwise_rotation(self) -> Self {
         static CLOCKWISE_ROTATIONS: Lazy<[Piece; 19]> = Lazy::new(|| {
             let mut rotations = [Piece::None; 19];
@@ -52,6 +48,7 @@ impl Piece {
         CLOCKWISE_ROTATIONS[self as usize]
     }
 
+    #[must_use]
     pub fn get_counterclockwise_rotation(self) -> Self {
         static COUNTERCLOCKWISE_ROTATIONS: Lazy<[Piece; 19]> = Lazy::new(|| {
             let mut rotations = [Piece::None; 19];
@@ -74,6 +71,7 @@ impl Piece {
         COUNTERCLOCKWISE_ROTATIONS[self as usize]
     }
 
+    #[must_use]
     pub fn get_tile_offsets(self) -> &'static [(i8, i8); 4] {
         const TILE_OFFSETS: [[(i8, i8); 4]; 19] = [
             [(-1, 0), (0, 0), (1, 0), (0, -1)],
@@ -113,6 +111,6 @@ impl Piece {
             ]
         });
 
-        return &*ROTATION_CYCLES;
+        &ROTATION_CYCLES
     }
 }

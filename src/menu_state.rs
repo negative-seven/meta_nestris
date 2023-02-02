@@ -33,6 +33,7 @@ impl MenuState<{ Modifier::empty() }> {
     /// Creates a `MenuState` with an "empty" [`Modifier`].
     ///
     /// Equivalent to `MenuState::<{ Modifier::empty() }>::new_with_modifier`.
+    #[must_use]
     pub fn new() -> Self {
         Self::new_with_modifier()
     }
@@ -54,6 +55,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
     /// let state_a = MenuState::<MODIFIER>::new_with_modifier();
     /// let state_b: MenuState<MODIFIER> = MenuState::new_with_modifier();
     /// ```
+    #[must_use]
     pub fn new_with_modifier() -> Self {
         let mut random = Random::new();
         random.cycle_multiple(263);
@@ -88,7 +90,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
             if self.delay_timer == 0 {
                 self.nmi_on = true;
             } else {
-                self.previous_input = input.clone();
+                self.previous_input = input;
                 return None;
             }
         }
@@ -105,7 +107,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
         }
 
         self.step_main_logic(input);
-        self.previous_input = input.clone();
+        self.previous_input = input;
 
         None
     }
@@ -181,7 +183,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
                     _ => 0,
                 };
 
-            if new_height >= 0 && new_height < 6 {
+            if (0..6).contains(&new_height) {
                 self.selected_height = new_height.try_into().unwrap();
             }
         } else {
@@ -194,7 +196,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
                     _ => 0,
                 };
 
-            if new_level >= 0 && new_level < 10 {
+            if (0..10).contains(&new_level) {
                 self.selected_level = new_level.try_into().unwrap();
             }
         }

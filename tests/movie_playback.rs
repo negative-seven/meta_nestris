@@ -52,13 +52,12 @@ fn movie_playback() {
 
     for movie_data in metadata_json {
         let movie_full_filepath = PathBuf::from("tests/movies/").join(movie_data.filename);
-        let movie = Movie::from_fm2(&movie_full_filepath).expect(
-            format!(
+        let movie = Movie::from_fm2(&movie_full_filepath).unwrap_or_else(|_| {
+            panic!(
                 "could not open movie file: {}",
                 movie_full_filepath.display()
             )
-            .as_str(),
-        );
+        });
         let inputs = movie.inputs.into_iter().chain(repeat(Input::None));
 
         if movie_data.uncapped_score {
@@ -125,10 +124,8 @@ fn check_state<const MODIFIER: Modifier>(state: &State<MODIFIER>, check: &MovieC
             if let State::MenuState(_) = state {
                 panic!("found menu state when expecting gameplay state");
             }
-        } else {
-            if let State::GameplayState(_) = state {
-                panic!("found gameplay state when expecting menu state")
-            }
+        } else if let State::GameplayState(_) = state {
+            panic!("found gameplay state when expecting menu state")
         }
     }
 }

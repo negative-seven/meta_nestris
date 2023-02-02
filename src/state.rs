@@ -20,6 +20,7 @@ impl State<{ Modifier::empty() }> {
     /// Creates a `State` with an "empty" [`Modifier`].
     ///
     /// Equivalent to `State::<{ Modifier::empty() }>::new_with_modifier`.
+    #[must_use]
     pub fn new() -> Self {
         Self::new_with_modifier()
     }
@@ -41,6 +42,7 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
     /// let state_a = State::<MODIFIER>::new_with_modifier();
     /// let state_b: State<MODIFIER> = State::new_with_modifier();
     /// ```
+    #[must_use]
     pub fn new_with_modifier() -> Self {
         Self::MenuState(MenuState::new_with_modifier())
     }
@@ -50,7 +52,7 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
         match self {
             State::MenuState(state) => {
                 if let Some(gameplay_state) = state.step(input) {
-                    *self = Self::GameplayState(gameplay_state)
+                    *self = Self::GameplayState(gameplay_state);
                 }
             }
             State::GameplayState(state) => state.step(input),

@@ -17,6 +17,7 @@ pub struct Modifier {
 }
 
 impl Modifier {
+    #[must_use]
     pub const fn empty() -> Self {
         Self {
             uncapped_score: false,
