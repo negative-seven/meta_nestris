@@ -96,6 +96,8 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
         }
 
         if self.change_to_gameplay_state {
+            self.random.cycle();
+
             return Some(GameplayState::new_with_modifier(
                 &self.random,
                 self.frame_counter,

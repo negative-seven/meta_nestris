@@ -132,7 +132,6 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
             play_state_delay: 0,
         };
 
-        state.random.cycle();
         state.current_piece = state.random.get_piece();
         state.random.cycle();
         state.next_piece = state.random.get_piece();
