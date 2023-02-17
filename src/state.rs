@@ -31,7 +31,7 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
     ///
     /// Example:
     /// ```
-    /// use meta_nestris::{modifier::Modifier, state::State};
+    /// use meta_nestris::{Modifier, State};
     ///
     /// const MODIFIER: Modifier = Modifier {
     ///     uncapped_score: true,

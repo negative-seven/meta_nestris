@@ -70,10 +70,7 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
     ///
     /// Example:
     /// ```
-    /// use meta_nestris::{
-    ///     game_type::GameType, gameplay_state::GameplayState, input::Input, modifier::Modifier,
-    ///     random::Random,
-    /// };
+    /// use meta_nestris::{GameType, GameplayState, Input, Modifier, Random};
     ///
     /// const MODIFIER: Modifier = Modifier {
     ///     uncapped_score: true,

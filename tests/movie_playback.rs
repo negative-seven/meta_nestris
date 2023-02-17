@@ -1,8 +1,8 @@
 #![allow(incomplete_features)]
 #![feature(adt_const_params)]
 
-use meta_nestris::modifier::Modifier;
-use meta_nestris::{input::Input, menu_mode::MenuMode, movie::Movie, state::State};
+use meta_nestris::Modifier;
+use meta_nestris::{Input, MenuMode, Movie, State};
 use serde::Deserialize;
 use serde::Deserializer;
 use std::{collections::HashMap, fs::File, iter::repeat, path::PathBuf};

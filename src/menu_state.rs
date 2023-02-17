@@ -44,7 +44,7 @@ impl<const MODIFIER: Modifier> MenuState<MODIFIER> {
     ///
     /// Example:
     /// ```
-    /// use meta_nestris::{menu_state::MenuState, modifier::Modifier};
+    /// use meta_nestris::{MenuState, Modifier};
     ///
     /// const MODIFIER: Modifier = Modifier {
     ///     uncapped_score: true,
