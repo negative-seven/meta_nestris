@@ -2,7 +2,7 @@ use meta_nestris::{game_type::GameType, meta_state::MetaState, state::State};
 
 #[test]
 fn meta_state_equivalent() {
-    let meta_state = MetaState::new(0, GameType::A);
+    let meta_state = MetaState::new(0, GameType::A, 280);
     let inputs = meta_state.get_inputs();
     assert_eq!(inputs.len(), meta_state.frame.try_into().unwrap());
 
