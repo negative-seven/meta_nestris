@@ -5,7 +5,7 @@ use meta_nestris::Modifier;
 use meta_nestris::{Input, MenuMode, Movie, State};
 use serde::Deserialize;
 use serde::Deserializer;
-use std::{collections::HashMap, fs::File, iter::repeat, path::PathBuf};
+use std::{collections::HashMap, fs::File, path::PathBuf};
 
 #[derive(Deserialize)]
 struct MovieData {
@@ -58,7 +58,7 @@ fn movie_playback() {
                 movie_full_filepath.display()
             )
         });
-        let inputs = movie.inputs.into_iter().chain(repeat(Input::None));
+        let inputs = movie.inputs.into_iter();
 
         if movie_data.uncapped_score {
             const MODIFIER: Modifier = Modifier {
@@ -74,15 +74,15 @@ fn movie_playback() {
 
 fn check_movie<const MODIFIER: Modifier>(
     checks: &HashMap<u32, MovieCheck>,
-    inputs: impl Iterator<Item = Input>,
+    mut inputs: impl Iterator<Item = Input>,
 ) {
     // may need to play movie beyond final stored input
     // at the same time, do not need to play movie beyond last checked frame
     let playback_duration = *checks.keys().max().unwrap();
 
     let mut state = State::<MODIFIER>::new_with_modifier();
-    for (input, frame) in inputs.zip(1..=playback_duration) {
-        state.step(input);
+    for frame in 1..=playback_duration {
+        state.step(inputs.next().unwrap_or_default()); // use empty Inputs after final movie input
 
         if let Some(check) = checks.get(&frame) {
             check_state(&state, check);
