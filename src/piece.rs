@@ -1,4 +1,4 @@
-use once_cell::sync::Lazy;
+use static_init::dynamic;
 use std::iter::once;
 
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
@@ -28,7 +28,8 @@ pub enum Piece {
 impl Piece {
     #[must_use]
     pub fn get_clockwise_rotation(self) -> Self {
-        static CLOCKWISE_ROTATIONS: Lazy<[Piece; 19]> = Lazy::new(|| {
+        #[dynamic]
+        static CLOCKWISE_ROTATIONS: [Piece; 19] = {
             let mut rotations = [Piece::None; 19];
 
             let pairs = Piece::get_rotation_cycles().iter().flat_map(|cycle| {
@@ -42,14 +43,15 @@ impl Piece {
             }
 
             rotations
-        });
+        };
 
         CLOCKWISE_ROTATIONS[self as usize]
     }
 
     #[must_use]
     pub fn get_counterclockwise_rotation(self) -> Self {
-        static COUNTERCLOCKWISE_ROTATIONS: Lazy<[Piece; 19]> = Lazy::new(|| {
+        #[dynamic]
+        static COUNTERCLOCKWISE_ROTATIONS: [Piece; 19] = {
             let mut rotations = [Piece::None; 19];
 
             let pairs = Piece::get_rotation_cycles().iter().flat_map(|cycle| {
@@ -65,7 +67,7 @@ impl Piece {
             }
 
             rotations
-        });
+        };
 
         COUNTERCLOCKWISE_ROTATIONS[self as usize]
     }
@@ -98,7 +100,8 @@ impl Piece {
     }
 
     fn get_rotation_cycles() -> &'static [Vec<Piece>; 7] {
-        static ROTATION_CYCLES: Lazy<[Vec<Piece>; 7]> = Lazy::new(|| {
+        #[dynamic]
+        static ROTATION_CYCLES: [Vec<Piece>; 7] = {
             [
                 vec![Piece::TUp, Piece::TRight, Piece::TDown, Piece::TLeft],
                 vec![Piece::JUp, Piece::JRight, Piece::JDown, Piece::JLeft],
@@ -108,7 +111,7 @@ impl Piece {
                 vec![Piece::LUp, Piece::LRight, Piece::LDown, Piece::LLeft],
                 vec![Piece::IHorizontal, Piece::IVertical],
             ]
-        });
+        };
 
         &ROTATION_CYCLES
     }

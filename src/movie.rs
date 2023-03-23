@@ -1,6 +1,6 @@
 use crate::input::Input;
-use once_cell::sync::Lazy;
 use regex::Regex;
+use static_init::dynamic;
 use std::{
     error::Error,
     fs::File,
@@ -14,7 +14,8 @@ pub struct Movie {
 
 impl Movie {
     pub fn from_fm2(path: &PathBuf) -> Result<Self, Box<dyn Error>> {
-        static REGEX_INPUT: Lazy<Regex> = Lazy::new(|| Regex::new(r"^\|\d+\|([^|]{8})\|").unwrap());
+        #[dynamic]
+        static REGEX_INPUT: Regex = Regex::new(r"^\|\d+\|([^|]{8})\|").unwrap();
 
         let file = File::open(path)?;
         let lines = BufReader::new(file)

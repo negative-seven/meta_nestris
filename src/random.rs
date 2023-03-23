@@ -1,6 +1,5 @@
-use once_cell::sync::Lazy;
-
 use crate::piece::Piece;
+use static_init::dynamic;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Random {
@@ -43,7 +42,8 @@ impl Random {
 
     #[must_use]
     pub fn get_value(&self) -> u8 {
-        static RNG_VALUES: Lazy<[u8; Random::RNG_STATES_COUNT as usize]> = Lazy::new(|| {
+        #[dynamic]
+        static RNG_VALUES: [u8; Random::RNG_STATES_COUNT as usize] = {
             let mut values = [0; Random::RNG_STATES_COUNT as usize];
 
             let mut current: u16 = 0x8988;
@@ -54,7 +54,7 @@ impl Random {
                 current = (new_bit << 15) | (current >> 1);
             }
             values
-        });
+        };
 
         RNG_VALUES[usize::from(self.index)]
     }
