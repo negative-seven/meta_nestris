@@ -92,40 +92,38 @@ fn check_movie<const MODIFIER: Modifier>(
 
 fn check_state<const MODIFIER: Modifier>(state: &State<MODIFIER>, check: &MovieCheck) {
     if let Some(score) = check.score {
-        match state {
-            State::MenuState(_) => panic!("found menu state during score check"),
-            State::GameplayState(state) => assert_eq!(score, state.score),
+        match &state.gameplay_state {
+            Some(state) => assert_eq!(score, state.score),
+            None => panic!("not in gameplay during score check"),
         }
     }
 
     if let Some(line_count) = check.line_count {
-        match state {
-            State::MenuState(_) => panic!("found menu state during line count check"),
-            State::GameplayState(state) => assert_eq!(line_count, state.line_count),
+        match &state.gameplay_state {
+            Some(state) => assert_eq!(line_count, state.line_count),
+            None => panic!("not in gameplay during line count check"),
         }
     }
 
     if let Some(dead) = check.dead {
-        match state {
-            State::MenuState(_) => panic!("found menu state during death check"),
-            State::GameplayState(state) => assert_eq!(dead, state.dead),
+        match &state.gameplay_state {
+            Some(state) => assert_eq!(dead, state.dead),
+            None => panic!("not in gameplay during death check"),
         }
     }
 
     if let Some(menu_mode) = check.menu_mode {
-        match state {
-            State::MenuState(state) => assert_eq!(menu_mode, state.menu_mode),
-            State::GameplayState(_) => panic!("found gameplay state during menu mode check"),
+        match state.gameplay_state {
+            Some(_) => panic!("in gameplay during menu mode check"),
+            None => assert_eq!(menu_mode, state.menu_mode),
         }
     }
 
     if let Some(is_gameplay_state) = check.is_gameplay_state {
-        if is_gameplay_state {
-            if let State::MenuState(_) = state {
-                panic!("found menu state when expecting gameplay state");
-            }
-        } else if let State::GameplayState(_) = state {
-            panic!("found gameplay state when expecting menu state")
+        if is_gameplay_state && state.gameplay_state.is_none() {
+            panic!("non-gameplay when expecting gameplay");
+        } else if !is_gameplay_state && state.gameplay_state.is_some() {
+            panic!("gameplay when expecting non-gameplay")
         }
     }
 }

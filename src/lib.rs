@@ -6,8 +6,6 @@
 //! * [`State`] represents any state of the game.
 //! * [`GameplayState`] represents a de facto gameplay state of the game; i.e. a
 //!   state where the playfield is present.
-//! * [`MenuState`] represents all states not covered by `GameplayState`,
-//!   referred to as menu screens.
 //!
 //! States correspond to instances between frames of the game, or the instance
 //! before the first frame of the game. Boundaries between frames loosely
@@ -26,12 +24,12 @@
 //!     state.step(input);
 //! }
 //!
-//! match state {
-//!     State::GameplayState(gameplay_state) => {
+//! match state.gameplay_state {
+//!     Some(gameplay_state) => {
 //!         println!("gameplay - score: {}", gameplay_state.score);
 //!     }
-//!     State::MenuState(menu_state) => {
-//!         println!("menu: {}", menu_state.menu_mode);
+//!     None => {
+//!         println!("menu: {}", state.menu_mode);
 //!     }
 //! }
 //! ```
@@ -62,7 +60,6 @@ mod game_type;
 mod gameplay_state;
 mod input;
 mod menu_mode;
-mod menu_state;
 mod modifier;
 mod movie;
 mod piece;
@@ -75,7 +72,6 @@ pub use game_type::*;
 pub use gameplay_state::*;
 pub use input::*;
 pub use menu_mode::*;
-pub use menu_state::*;
 pub use modifier::*;
 pub use movie::*;
 pub use piece::*;
