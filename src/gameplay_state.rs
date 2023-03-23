@@ -81,13 +81,13 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
     /// let state_a = GameplayState::<MODIFIER>::new_with_modifier(
     ///     &Random::new(),
     ///     0,
-    ///     Input::None,
+    ///     Input::empty(),
     ///     GameType::A,
     ///     19,
     ///     0,
     /// );
     /// let state_b: GameplayState<MODIFIER> =
-    ///     GameplayState::new_with_modifier(&Random::new(), 0, Input::None, GameType::A, 19, 0);
+    ///     GameplayState::new_with_modifier(&Random::new(), 0, Input::empty(), GameType::A, 19, 0);
     /// ```
     #[must_use]
     pub fn new_with_modifier(
@@ -214,7 +214,7 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
         }
 
         if self.game_mode_state == GameModeState::HandleStartButton
-            && input.difference(self.previous_input).get(Input::Start)
+            && input.difference(self.previous_input).contains(Input::Start)
         {
             self.paused = true;
         }
@@ -372,15 +372,15 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
     }
 
     fn try_shift_piece(&mut self, input: Input) {
-        if input.get(Input::Down) {
+        if input.contains(Input::Down) {
             return;
         }
-        if !input.get(Input::Left) && !input.get(Input::Right) {
+        if !input.contains(Input::Left) && !input.contains(Input::Right) {
             return;
         }
 
         let pressed_input = input.difference(self.previous_input);
-        if pressed_input.get(Input::Left) || pressed_input.get(Input::Right) {
+        if pressed_input.contains(Input::Left) || pressed_input.contains(Input::Right) {
             // new left/right press; try to shift piece immediately, but set autorepeat
             // timer to high value. note that this can be triggered on two
             // consecutive frames with left/right followed by left+right - this allows for
@@ -395,7 +395,7 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
             return;
         }
 
-        let new_piece_x = if input.get(Input::Right) {
+        let new_piece_x = if input.contains(Input::Right) {
             self.current_piece_x + 1 // right held or left + right held
         } else {
             self.current_piece_x - 1 // left held
@@ -444,9 +444,9 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
 
     fn try_rotate_piece(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
-        let new_piece_rotation = if pressed_input.get(Input::A) {
+        let new_piece_rotation = if pressed_input.contains(Input::A) {
             self.current_piece.get_clockwise_rotation()
-        } else if pressed_input.get(Input::B) {
+        } else if pressed_input.contains(Input::B) {
             self.current_piece.get_counterclockwise_rotation()
         } else {
             return;
@@ -464,7 +464,7 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
 
         if self.drop_autorepeat < 0 {
             // handle initial piece delay
-            if pressed_input.get(Input::Down) {
+            if pressed_input.contains(Input::Down) {
                 // end initial piece delay
                 self.drop_autorepeat = 0;
             } else {
@@ -478,10 +478,10 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
 
         if self.drop_autorepeat == 0 {
             // pushdown not in progress
-            if pressed_input.get(Input::Down)
-                && !input.get(Input::Left)
-                && !input.get(Input::Right)
-                && !pressed_input.get(Input::Up)
+            if pressed_input.contains(Input::Down)
+                && !input.contains(Input::Left)
+                && !input.contains(Input::Right)
+                && !pressed_input.contains(Input::Up)
             {
                 // begin manual pushdown
                 // note: the first drop takes a frame longer than subsequent drops
@@ -489,10 +489,10 @@ impl<const MODIFIER: Modifier> GameplayState<MODIFIER> {
             }
         } else {
             // pushdown in progress
-            if input.get(Input::Down)
-                && !input.get(Input::Left)
-                && !input.get(Input::Right)
-                && !input.get(Input::Up)
+            if input.contains(Input::Down)
+                && !input.contains(Input::Left)
+                && !input.contains(Input::Right)
+                && !input.contains(Input::Up)
             {
                 // continue manual pushdown
                 self.drop_autorepeat += 1;

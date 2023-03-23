@@ -57,7 +57,7 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
 
         Self {
             nmi_on: false,
-            previous_input: Input::new(),
+            previous_input: Input::empty(),
             frame_counter: 3,
             random,
             menu_mode: MenuMode::CopyrightScreen,

@@ -4,7 +4,7 @@ version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-bitmask-enum = "=2.1.0"
+bitflags = "=2.0.2"
 bitvec = "=1.0.1"
 regex = "=1.7.0"
 static_init = "=1.0.3"

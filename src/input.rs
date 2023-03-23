@@ -1,24 +1,20 @@
-use bitmask_enum::bitmask;
+use bitflags::bitflags;
 
-#[bitmask(u8)]
-pub enum Input {
-    None = 0,
-    Right = 0x01,
-    Left = 0x02,
-    Down = 0x04,
-    Up = 0x08,
-    Start = 0x10,
-    Select = 0x20,
-    B = 0x40,
-    A = 0x80,
+bitflags! {
+    #[derive(Clone, Copy, Debug, Eq, PartialEq)]
+    pub struct Input: u8 {
+        const Right = 0x01;
+        const Left = 0x02;
+        const Down = 0x04;
+        const Up = 0x08;
+        const Start = 0x10;
+        const Select = 0x20;
+        const B = 0x40;
+        const A = 0x80;
+    }
 }
 
 impl Input {
-    #[must_use]
-    pub fn new() -> Self {
-        Self::None
-    }
-
     pub fn from_fm2_string(string: &String) -> Result<Input, String> {
         if string.len() != 8 {
             return Err("cannot create input from fm2 string of length != 8".into());
@@ -31,35 +27,12 @@ impl Input {
             input_byte |= if state { 0x80 } else { 0 };
         }
 
-        Ok(Input::from(input_byte))
-    }
-
-    #[must_use]
-    pub fn get(self, button: Input) -> bool {
-        self & button != 0
-    }
-
-    #[must_use]
-    pub fn get_only_input(self, button: Input) -> bool {
-        self == button
-    }
-
-    pub fn set(mut self, button: Input, state: bool) {
-        if state {
-            self |= button;
-        } else {
-            self &= !button;
-        }
-    }
-
-    #[must_use]
-    pub fn difference(self, other: Input) -> Input {
-        self & !other
+        Ok(Input::from_bits_retain(input_byte))
     }
 }
 
 impl Default for Input {
     fn default() -> Self {
-        Self::new()
+        Self::empty()
     }
 }
