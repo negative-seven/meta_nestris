@@ -1,8 +1,7 @@
-use enum_primitive_derive::Primitive;
 use once_cell::sync::Lazy;
 use std::iter::once;
 
-#[derive(Clone, Copy, Debug, Eq, PartialEq, Primitive)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Piece {
     TUp = 0,
     TRight = 1,
