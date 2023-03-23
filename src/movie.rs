@@ -5,7 +5,7 @@ use std::{
     error::Error,
     fs::File,
     io::{self, BufRead, BufReader},
-    path::PathBuf,
+    path::Path,
 };
 
 pub struct Movie {
@@ -13,7 +13,7 @@ pub struct Movie {
 }
 
 impl Movie {
-    pub fn from_fm2(path: &PathBuf) -> Result<Self, Box<dyn Error>> {
+    pub fn from_fm2(path: impl AsRef<Path>) -> Result<Self, Box<dyn Error>> {
         #[dynamic]
         static REGEX_INPUT: Regex = Regex::new(r"^\|\d+\|([^|]{8})\|").unwrap();
 

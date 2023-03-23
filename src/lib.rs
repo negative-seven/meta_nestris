@@ -17,7 +17,7 @@
 //! ```no_run
 //! use meta_nestris::{Movie, State};
 //!
-//! let movie = Movie::from_fm2(&"inputs.fm2".into()).expect("File not found.");
+//! let movie = Movie::from_fm2("inputs.fm2").expect("File not found.");
 //!
 //! let mut state = State::new();
 //! for input in movie.inputs {
