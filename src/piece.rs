@@ -1,6 +1,3 @@
-use static_init::dynamic;
-use std::iter::once;
-
 #[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum Piece {
     TUp = 0,
@@ -28,18 +25,23 @@ pub enum Piece {
 impl Piece {
     #[must_use]
     pub fn get_clockwise_rotation(self) -> Self {
-        #[dynamic]
-        static CLOCKWISE_ROTATIONS: [Piece; 19] = {
+        const CLOCKWISE_ROTATIONS: [Piece; 19] = {
             let mut rotations = [Piece::None; 19];
 
-            let pairs = Piece::get_rotation_cycles().iter().flat_map(|cycle| {
-                cycle
-                    .iter()
-                    .zip(cycle.iter().skip(1).chain(once(cycle.first().unwrap())))
-            });
+            let rotation_cycles = Piece::get_rotation_cycles();
 
-            for (first, second) in pairs {
-                rotations[*first as usize] = *second;
+            let mut cycle_index = 0;
+            while cycle_index < rotation_cycles.len() {
+                let cycle = rotation_cycles[cycle_index];
+
+                let mut piece_index = 0;
+                while piece_index < cycle.len() {
+                    rotations[cycle[piece_index] as usize] = cycle[(piece_index + 1) % cycle.len()];
+
+                    piece_index += 1;
+                }
+
+                cycle_index += 1;
             }
 
             rotations
@@ -50,20 +52,24 @@ impl Piece {
 
     #[must_use]
     pub fn get_counterclockwise_rotation(self) -> Self {
-        #[dynamic]
-        static COUNTERCLOCKWISE_ROTATIONS: [Piece; 19] = {
+        const COUNTERCLOCKWISE_ROTATIONS: [Piece; 19] = {
             let mut rotations = [Piece::None; 19];
 
-            let pairs = Piece::get_rotation_cycles().iter().flat_map(|cycle| {
-                cycle
-                    .iter()
-                    .skip(1)
-                    .chain(once(cycle.first().unwrap()))
-                    .zip(cycle.iter())
-            });
+            let rotation_cycles = Piece::get_rotation_cycles();
 
-            for (first, second) in pairs {
-                rotations[*first as usize] = *second;
+            let mut cycle_index = 0;
+            while cycle_index < rotation_cycles.len() {
+                let cycle = rotation_cycles[cycle_index];
+
+                let mut piece_index = 0;
+                while piece_index < cycle.len() {
+                    rotations[cycle[piece_index] as usize] =
+                        cycle[(piece_index + cycle.len() - 1) % cycle.len()];
+
+                    piece_index += 1;
+                }
+
+                cycle_index += 1;
             }
 
             rotations
@@ -99,17 +105,31 @@ impl Piece {
         &TILE_OFFSETS[self as usize]
     }
 
-    fn get_rotation_cycles() -> &'static [Vec<Piece>; 7] {
-        #[dynamic]
-        static ROTATION_CYCLES: [Vec<Piece>; 7] = {
+    const fn get_rotation_cycles() -> &'static [[Piece; 4]; 7] {
+        const ROTATION_CYCLES: [[Piece; 4]; 7] = {
             [
-                vec![Piece::TUp, Piece::TRight, Piece::TDown, Piece::TLeft],
-                vec![Piece::JUp, Piece::JRight, Piece::JDown, Piece::JLeft],
-                vec![Piece::ZHorizontal, Piece::ZVertical],
-                vec![Piece::O],
-                vec![Piece::SHorizontal, Piece::SVertical],
-                vec![Piece::LUp, Piece::LRight, Piece::LDown, Piece::LLeft],
-                vec![Piece::IHorizontal, Piece::IVertical],
+                [Piece::TUp, Piece::TRight, Piece::TDown, Piece::TLeft],
+                [Piece::JUp, Piece::JRight, Piece::JDown, Piece::JLeft],
+                [
+                    Piece::ZHorizontal,
+                    Piece::ZVertical,
+                    Piece::ZHorizontal,
+                    Piece::ZVertical,
+                ],
+                [Piece::O, Piece::O, Piece::O, Piece::O],
+                [
+                    Piece::SHorizontal,
+                    Piece::SVertical,
+                    Piece::SHorizontal,
+                    Piece::SVertical,
+                ],
+                [Piece::LUp, Piece::LRight, Piece::LDown, Piece::LLeft],
+                [
+                    Piece::IHorizontal,
+                    Piece::IVertical,
+                    Piece::IHorizontal,
+                    Piece::IVertical,
+                ],
             ]
         };
 

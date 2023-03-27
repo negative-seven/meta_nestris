@@ -1,5 +1,4 @@
 use crate::piece::Piece;
-use static_init::dynamic;
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct Random {
@@ -9,7 +8,7 @@ pub struct Random {
 }
 
 impl Random {
-    const RNG_STATES_COUNT: u16 = 32767;
+    const RNG_STATES_COUNT: usize = 32767;
 
     #[must_use]
     pub fn new() -> Self {
@@ -22,7 +21,7 @@ impl Random {
 
     pub fn cycle(&mut self) {
         self.index += 1;
-        self.index %= Self::RNG_STATES_COUNT;
+        self.index %= Self::RNG_STATES_COUNT as u16;
     }
 
     pub fn cycle_multiple(&mut self, count: usize) {
@@ -42,17 +41,20 @@ impl Random {
 
     #[must_use]
     pub fn get_value(&self) -> u8 {
-        #[dynamic]
-        static RNG_VALUES: [u8; Random::RNG_STATES_COUNT as usize] = {
-            let mut values = [0; Random::RNG_STATES_COUNT as usize];
+        const RNG_VALUES: [u8; Random::RNG_STATES_COUNT] = {
+            let mut values = [0; Random::RNG_STATES_COUNT];
 
-            let mut current: u16 = 0x8988;
-            for value in values.iter_mut() {
-                *value = (current >> 8) as u8;
+            let mut current = 0x8988u16;
+            let mut index = 0;
+            while index < Random::RNG_STATES_COUNT {
+                values[index] = (current >> 8) as u8;
 
                 let new_bit = ((current >> 9) ^ (current >> 1)) & 1;
                 current = (new_bit << 15) | (current >> 1);
+
+                index += 1;
             }
+
             values
         };
 
