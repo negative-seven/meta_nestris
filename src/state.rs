@@ -9,7 +9,6 @@ use crate::{input::Input, modifier::Modifier, GameType, GameplayState, MenuMode,
 /// supported modifiers.
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct State<const MODIFIER: Modifier> {
-    pub nmi_on: bool,
     pub delay_timer: u16,
     pub change_to_gameplay_state: bool,
     pub menu_mode: MenuMode,
@@ -53,12 +52,11 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
     #[must_use]
     pub fn new_with_modifier() -> Self {
         let mut random = Random::new();
-        random.cycle_multiple(263);
+        random.cycle_multiple(262);
 
         Self {
-            nmi_on: false,
             previous_input: Input::empty(),
-            frame_counter: 3,
+            frame_counter: 2,
             random,
             menu_mode: MenuMode::CopyrightScreen,
             game_type: GameType::A,
@@ -66,7 +64,7 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
             selecting_height: false,
             selected_height: 0,
             copyright_skip_timer: 0xff,
-            delay_timer: 268,
+            delay_timer: 267,
             change_to_gameplay_state: false,
             gameplay_state: None,
         }
@@ -79,20 +77,14 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
             return;
         }
 
-        if self.nmi_on {
-            self.frame_counter = (self.frame_counter + 1) % 4;
-            self.random.cycle();
-        }
-
         if self.delay_timer > 0 {
             self.delay_timer -= 1;
-            if self.delay_timer == 0 {
-                self.nmi_on = true;
-            } else {
-                self.previous_input = input;
-                return;
-            }
+            self.previous_input = input;
+            return;
         }
+
+        self.frame_counter = (self.frame_counter + 1) % 4;
+        self.random.cycle();
 
         if self.change_to_gameplay_state {
             self.random.cycle();
@@ -123,8 +115,6 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
     }
 
     fn step_legal_screen(&mut self, input: Input) {
-        self.nmi_on = true;
-
         let pressed_input = input.difference(self.previous_input);
         if pressed_input != Input::Start && self.copyright_skip_timer != 0 {
             self.copyright_skip_timer -= 1;
@@ -132,14 +122,17 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
         }
 
         self.menu_mode = MenuMode::TitleScreen;
-        self.delay_timer = 5;
+        self.delay_timer = 4;
+        self.random.cycle_multiple(4);
     }
 
     fn step_title_screen(&mut self, input: Input) {
         let pressed_input = input.difference(self.previous_input);
         if pressed_input == Input::Start {
             self.menu_mode = MenuMode::GameTypeSelect;
-            self.delay_timer = 4;
+            self.delay_timer = 3;
+            self.frame_counter = (self.frame_counter + 3) % 4;
+            self.random.cycle_multiple(3);
         }
     }
 
@@ -154,23 +147,23 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
             }
             Input::Start => {
                 self.menu_mode = MenuMode::LevelSelect;
-                self.delay_timer = 5;
+                self.delay_timer = 4;
                 self.selecting_height = false;
                 self.selected_level %= 10;
-                self.nmi_on = false;
-                self.random.cycle_multiple(4);
+                self.frame_counter = (self.frame_counter + 3) % 4;
+                self.random.cycle_multiple(3);
             }
             Input::B => {
                 self.menu_mode = MenuMode::TitleScreen;
-                self.delay_timer = 6;
+                self.delay_timer = 5;
+                self.frame_counter = (self.frame_counter + 1) % 4;
+                self.random.cycle_multiple(5);
             }
             _ => (),
         }
     }
 
     fn step_level_menu(&mut self, input: Input) {
-        self.nmi_on = true;
-
         let pressed_input = input.difference(self.previous_input);
 
         if self.selecting_height {
@@ -214,11 +207,15 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
                 } else {
                     0
                 };
-            self.delay_timer = 3;
             self.menu_mode = MenuMode::InitializingGame;
+            self.delay_timer = 2;
+            self.frame_counter = (self.frame_counter + 2) % 4;
+            self.random.cycle();
         } else if pressed_input == Input::B {
-            self.delay_timer = 4;
             self.menu_mode = MenuMode::GameTypeSelect;
+            self.delay_timer = 3;
+            self.frame_counter = (self.frame_counter + 3) % 4;
+            self.random.cycle_multiple(3);
         } else {
             for _ in 0..2 {
                 self.random.cycle_do_while(|v| v % 16 >= 10);
@@ -227,16 +224,9 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
     }
 
     fn step_init_game_state(&mut self) {
-        self.frame_counter = (self.frame_counter + 1) % 4;
-        match self.game_type {
-            GameType::A => {
-                self.delay_timer = 1;
-            }
-            GameType::B => {
-                self.delay_timer = 13;
-            }
+        if self.game_type == GameType::B {
+            self.delay_timer = 12;
         }
-        self.nmi_on = false;
         self.change_to_gameplay_state = true;
     }
 }
