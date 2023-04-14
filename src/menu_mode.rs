@@ -6,7 +6,6 @@ pub enum MenuMode {
     TitleScreen,
     GameTypeSelect,
     LevelSelect,
-    InitializingGame,
 }
 
 impl Display for MenuMode {

@@ -110,7 +110,6 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
             MenuMode::TitleScreen => self.step_title_screen(input),
             MenuMode::GameTypeSelect => self.step_game_type_menu(input),
             MenuMode::LevelSelect => self.step_level_menu(input),
-            MenuMode::InitializingGame => self.step_init_game_state(),
         }
     }
 
@@ -207,10 +206,13 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
                 } else {
                     0
                 };
-            self.menu_mode = MenuMode::InitializingGame;
-            self.delay_timer = 2;
-            self.frame_counter = (self.frame_counter + 2) % 4;
-            self.random.cycle();
+            self.delay_timer = match self.game_type {
+                GameType::A => 3,
+                GameType::B => 15,
+            };
+            self.frame_counter = (self.frame_counter + 3) % 4;
+            self.random.cycle_multiple(2);
+            self.change_to_gameplay_state = true;
         } else if pressed_input == Input::B {
             self.menu_mode = MenuMode::GameTypeSelect;
             self.delay_timer = 3;
@@ -221,13 +223,6 @@ impl<const MODIFIER: Modifier> State<MODIFIER> {
                 self.random.cycle_do_while(|v| v % 16 >= 10);
             }
         }
-    }
-
-    fn step_init_game_state(&mut self) {
-        if self.game_type == GameType::B {
-            self.delay_timer = 12;
-        }
-        self.change_to_gameplay_state = true;
     }
 }
 

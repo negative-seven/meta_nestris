@@ -36,7 +36,6 @@ where
         TitleScreen,
         GameTypeSelect,
         LevelSelect,
-        InitializingGame,
     }
 
     #[derive(Deserialize)]
