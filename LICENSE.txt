@@ -1,3 +1,16 @@
+Movie files obtained from TASVideos are redistributed under the Creative Commons Attribution 2.0 license (https://creativecommons.org/licenses/by/2.0/). These include:
+    - tasvideos_239m.fm2: NES Tetris "maximum score" by Acmlm in 04:06.07 (https://tasvideos.org/239M)
+    - tasvideos_386m.fm2: NES Tetris "maximum score" by nico in 03:56.42 (https://tasvideos.org/386M)
+    - tasvideos_399m.fm2: NES Tetris "maximum score" by Acmlm in 03:41.90 (https://tasvideos.org/399M)
+    - tasvideos_920m.fm2: NES Tetris "Mode B" by Chef Stef in 00:50.53 (https://tasvideos.org/920M)
+    - tasvideos_924m.fm2: NES Tetris "maximum score" by Baxter in 03:29.67 (https://tasvideos.org/924M)
+    - tasvideos_925m.fm2: NES Tetris "Mode B" by Baxter in 00:38.85 (https://tasvideos.org/925M)
+    - tasvideos_1596m.fm2: NES Tetris "maximum score" by Acmlm in 03:11.78 (https://tasvideos.org/1596M)
+    - tasvideos_4210m.fm2: NES Tetris "Mode B" by Archanfel & Baxter in 00:36.89 (https://tasvideos.org/4210M; converted from the BizHawk bk2 format to the FCEUX fm2 format)
+    - tasvideos_4853m.fm2: NES Tetris "maximum score" by r57shell & Archanfel in 02:53.13 (https://tasvideos.org/4853M)
+
+All other files are distributed under the Mozilla Public License 2.0, the full text of which can be found below:
+
 Mozilla Public License Version 2.0
 ==================================
 
