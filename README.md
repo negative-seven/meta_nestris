@@ -4,7 +4,7 @@ A largely functionally accurate recreation of NES Tetris in Rust.
 
 ## Intentional differences from the base game
 
-- although they ultimately result in the same state, some operations have been reordered to make the code cleaner and/or faster
+- although they ultimately result in the same state, some operations have been reordered for the purposes of performance and/or simplification.
   
 ## Game events which are not intended to be supported
 
